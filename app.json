@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Bookam",
+    "slug": "bookam",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "bookam",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.bookam.app"
+    },
+    "android": {
+      "package": "com.bookam.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "bookam"
+            },
+            {
+              "scheme": "exp+bookam"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
