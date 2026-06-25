@@ -4,14 +4,24 @@
     "slug": "bookam",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
     "scheme": "bookam",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#EEE9F5"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.bookam.app"
     },
     "android": {
       "package": "com.bookam.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#6B2D82"
+      },
       "intentFilters": [
         {
           "action": "VIEW",
