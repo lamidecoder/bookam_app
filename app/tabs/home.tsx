@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { BookamLogo } from '../../components/ui/BookamLogo';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../components/ui/ToastContext';
 import { getProperties, getFeaturedProperties, subscribeToProperties, getSavedPropertyIds, toggleSavedProperty } from '../../lib/api';
 import { optimizedImageUrl } from '../../lib/cloudinary';
 
@@ -86,6 +87,7 @@ function PropertyCard({ item, onPress, isSaved, onToggleSave }: {
 
 export default function HomeScreen() {
   const { user, profile } = useAuth();
+  const toast = useToast();
   const [activeType, setActiveType] = useState('All');
   const [featured, setFeatured] = useState<any[]>([]);
   const [allProperties, setAllProperties] = useState<any[]>([]);
@@ -138,6 +140,7 @@ export default function HomeScreen() {
       setSavedIds(prev => nowSaved ? [...prev, propertyId] : prev.filter(id => id !== propertyId));
     } catch (e) {
       console.error('Failed to toggle save:', e);
+      toast.error('Failed', 'Could not save this property. Please try again.');
     }
   };
 

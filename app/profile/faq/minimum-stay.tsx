@@ -21,11 +21,7 @@ export default function MinimumStayScreen() {
           </Svg>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>FAQ</Text>
-        <TouchableOpacity>
-          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-            <Circle cx="12" cy="12" r="3" stroke="#6B2D82" strokeWidth={1.8} />
-          </Svg>
-        </TouchableOpacity>
+        <View style={{ width: 22 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>

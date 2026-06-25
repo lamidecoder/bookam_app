@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../components/ui/ToastContext';
 import { searchProperties, getSavedPropertyIds, toggleSavedProperty } from '../../lib/api';
 import { optimizedImageUrl } from '../../lib/cloudinary';
 import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
@@ -37,6 +38,7 @@ function VerifiedBadge() {
 
 export default function ExploreScreen() {
   const { user } = useAuth();
+  const toast = useToast();
   const [search, setSearch] = useState('');
   const [activeType, setActiveType] = useState('All');
   const [activeAreas, setActiveAreas] = useState<string[]>([]);
@@ -101,6 +103,7 @@ export default function ExploreScreen() {
       setSavedIds(prev => nowSaved ? [...prev, propertyId] : prev.filter(id => id !== propertyId));
     } catch (e) {
       console.error('Failed to toggle save:', e);
+      toast.error('Failed', 'Could not save this property. Please try again.');
     }
   };
 

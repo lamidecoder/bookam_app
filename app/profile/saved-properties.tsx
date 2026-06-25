@@ -9,23 +9,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../components/ui/ToastContext';
 import { getSavedProperties, toggleSavedProperty } from '../../lib/api';
 import { optimizedImageUrl } from '../../lib/cloudinary';
 import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
 export default function SavedPropertiesScreen() {
   const { user } = useAuth();
+  const toast = useToast();
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(false);
 
   const loadSaved = useCallback(async () => {
     if (!user) { setLoading(false); return; }
+    setError(false);
     try {
       const data = await getSavedProperties(user.id);
       setProperties(data);
     } catch (e) {
       console.error(e);
+      setError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -36,8 +41,13 @@ export default function SavedPropertiesScreen() {
 
   const handleUnsave = async (propertyId: string) => {
     if (!user) return;
-    await toggleSavedProperty(user.id, propertyId);
-    setProperties(prev => prev.filter(p => p.id !== propertyId));
+    try {
+      await toggleSavedProperty(user.id, propertyId);
+      setProperties(prev => prev.filter(p => p.id !== propertyId));
+    } catch (e) {
+      console.error('Failed to unsave:', e);
+      toast.error('Failed', 'Could not remove this property. Please try again.');
+    }
   };
 
   return (
@@ -62,7 +72,16 @@ export default function SavedPropertiesScreen() {
           contentContainerStyle={styles.scroll}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadSaved(); }} tintColor="#6B2D82" />}
         >
-          {properties.length === 0 ? (
+          {error ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyIcon}>⚠️</Text>
+              <Text style={styles.emptyTitle}>Something went wrong</Text>
+              <Text style={styles.emptySub}>Could not load your saved properties.</Text>
+              <TouchableOpacity style={styles.exploreBtn} onPress={loadSaved}>
+                <Text style={styles.exploreBtnText}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : properties.length === 0 ? (
             <View style={styles.empty}>
               <Text style={styles.emptyIcon}>🤍</Text>
               <Text style={styles.emptyTitle}>No saved properties yet</Text>

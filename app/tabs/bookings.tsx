@@ -187,7 +187,26 @@ export default function BookingsScreen() {
                           </View>
                         </View>
                         {status === 'completed' && (
-                          <TouchableOpacity style={styles.reviewLink}>
+                          <TouchableOpacity
+                            style={styles.reviewLink}
+                            onPress={() => router.push({
+                              pathname: '/booking/detail-review',
+                              params: {
+                                bookingId: booking.id,
+                                propertyId: booking.property_id,
+                                propertyName: property?.name,
+                                location: property?.location,
+                                checkIn: formatDate(booking.check_in),
+                                checkOut: formatDate(booking.check_out),
+                                nights: booking.nights,
+                                total: booking.total,
+                                serviceFee: booking.service_fee,
+                                ref: booking.payment_ref || booking.id.slice(0, 12).toUpperCase(),
+                                guestCount: booking.guests,
+                                dates: `${formatDate(booking.check_in)} – ${formatDate(booking.check_out)}`,
+                              },
+                            })}
+                          >
                             <Text style={styles.reviewLinkText}>Leave a Review →</Text>
                           </TouchableOpacity>
                         )}

@@ -71,12 +71,26 @@ export default function RootLayout() {
       const fragment = url.split('#')[1];
       if (!fragment) return;
       const params = new URLSearchParams(fragment);
+      const type = params.get('type');
+
+      // CRITICAL: this global listener must ONLY handle password-recovery
+      // links opened from outside the app (e.g. tapping the reset-password
+      // email while the app was closed). Google sign-in is fully handled
+      // by lib/googleAuth.ts via WebBrowser.openAuthSessionAsync, which
+      // resolves its own promise directly with the result — it does NOT
+      // need this listener too. Google's redirect URL has no `type` param,
+      // so checking for `type === 'recovery'` here is what keeps the two
+      // paths from racing each other and fighting over navigation/session
+      // state. Without this check, Google sign-in works then immediately
+      // logs the user back out — this exact bug has happened before when
+      // this check was accidentally removed/reverted. Do not remove it.
+      if (type !== 'recovery') return;
+
       const access_token = params.get('access_token');
       const refresh_token = params.get('refresh_token');
-      const type = params.get('type');
       if (access_token && refresh_token) {
         const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-        if (!error) router.replace(type === 'recovery' ? '/auth/new-password' : '/tabs/home');
+        if (!error) router.replace('/auth/new-password');
       }
     };
 
