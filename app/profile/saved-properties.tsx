@@ -11,6 +11,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { useAuth } from '../../hooks/useAuth';
 import { getSavedProperties, toggleSavedProperty } from '../../lib/api';
 import { optimizedImageUrl } from '../../lib/cloudinary';
+import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
 export default function SavedPropertiesScreen() {
   const { user } = useAuth();
@@ -128,14 +129,7 @@ export default function SavedPropertiesScreen() {
         </ScrollView>
       )}
 
-      <View style={styles.floatingBtns}>
-        <TouchableOpacity style={styles.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/2348000000000')}>
-          <Text style={styles.floatingIcon}>💬</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL('tel:+2348000000000')}>
-          <Text style={styles.floatingIcon}>📞</Text>
-        </TouchableOpacity>
-      </View>
+      <FloatingSupportButtons />
     </SafeAreaView>
   );
 }

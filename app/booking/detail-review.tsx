@@ -11,6 +11,7 @@ import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 import { useAuth } from '../../hooks/useAuth';
 import { submitReview } from '../../lib/api';
+import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
 function StarRating({ rating, onRate }: { rating: number; onRate: (r: number) => void }) {
   return (
@@ -68,7 +69,13 @@ export default function BookingDetailReviewScreen() {
         body: review.trim(),
       });
       toast.success('Review submitted!', 'Thank you for sharing your experience.');
-      setTimeout(() => router.back(), 1500);
+      setTimeout(() => {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/tabs/bookings');
+        }
+      }, 1500);
     } catch (e: any) {
       toast.error('Failed', e.message || 'Could not submit review. Please try again.');
     } finally { setLoading(false); }
@@ -186,14 +193,7 @@ export default function BookingDetailReviewScreen() {
       </ScrollView>
 
       {/* Floating support buttons */}
-      <View style={styles.floatingBtns}>
-        <TouchableOpacity style={styles.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/2348000000000')}>
-          <Text style={styles.floatingIcon}>💬</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL('tel:+2348000000000')}>
-          <Text style={styles.floatingIcon}>📞</Text>
-        </TouchableOpacity>
-      </View>
+      <FloatingSupportButtons />
     </SafeAreaView>
   );
 }

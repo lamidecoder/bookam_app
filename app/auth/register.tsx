@@ -11,6 +11,7 @@ import { BookamLogo } from '../../components/ui/BookamLogo';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
+import { signInWithGoogle } from '../../lib/googleAuth';
 
 function GoogleIcon() {
   return (
@@ -30,7 +31,22 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const toast = useToast();
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      const result = await signInWithGoogle();
+      if (result.success) {
+        if (router.canGoBack()) { router.back(); } else { router.replace('/tabs/home'); }
+      } else {
+        toast.error('Google sign-in failed', result.error);
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleRegister = async () => {
     if (!fullName.trim()) { toast.error('Name required', 'Enter your full name.'); return; }
@@ -169,9 +185,14 @@ export default function RegisterScreen() {
           </View>
 
           {/* Google */}
-          <TouchableOpacity style={styles.googleBtn} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={[styles.googleBtn, googleLoading && { opacity: 0.6 }]}
+            activeOpacity={0.85}
+            onPress={handleGoogleSignIn}
+            disabled={googleLoading}
+          >
             <GoogleIcon />
-            <Text style={styles.googleText}>Continue with Google</Text>
+            <Text style={styles.googleText}>{googleLoading ? 'Signing in...' : 'Continue with Google'}</Text>
           </TouchableOpacity>
 
           <View style={styles.loginRow}>

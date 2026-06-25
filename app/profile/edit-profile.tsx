@@ -11,11 +11,14 @@ import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { updateProfile } from '../../lib/api';
+import { Validate } from '../../lib/security';
 
 export default function EditProfileScreen() {
   const { user, profile } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
@@ -23,6 +26,8 @@ export default function EditProfileScreen() {
     if (profile) {
       setFullName(profile.full_name || '');
       setEmail(profile.email || user?.email || '');
+      const rawPhone = profile.phone || '';
+      setPhone(rawPhone.replace(/^\+234/, '').replace(/^0/, ''));
     }
   }, [profile, user]);
 
@@ -31,17 +36,53 @@ export default function EditProfileScreen() {
       toast.error('Name required', 'Please enter your full name.');
       return;
     }
+    if (!email.trim() || !email.includes('@')) {
+      toast.error('Invalid email', 'Please enter a valid email address.');
+      return;
+    }
+
+    let formattedPhone: string | null = null;
+    if (phone.trim()) {
+      const localFormat = phone.trim().length === 10 ? `0${phone.trim()}` : phone.trim();
+      if (!Validate.phone(localFormat)) {
+        toast.error('Invalid phone', 'Enter a valid Nigerian phone number, e.g. 08031234567.');
+        return;
+      }
+      formattedPhone = `+234${localFormat.replace(/^0/, '')}`;
+    }
+
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from('profiles').update({ full_name: fullName, email }).eq('id', user.id);
-        await supabase.auth.updateUser({ data: { full_name: fullName } });
+      if (!user) throw new Error('No active session.');
+
+      const emailChanged = email.trim() !== (profile?.email || user.email);
+      if (emailChanged) {
+        const { error: emailError } = await supabase.auth.updateUser({ email: email.trim() });
+        if (emailError) throw emailError;
       }
-      toast.success('Profile updated!', 'Your changes have been saved.');
-      setTimeout(() => router.back(), 1200);
-    } catch (e) {
-      toast.error('Update failed', 'Please try again.');
+
+      await updateProfile(user.id, {
+        full_name: fullName.trim(),
+        email: email.trim(),
+        phone: formattedPhone || undefined,
+      });
+      await supabase.auth.updateUser({ data: { full_name: fullName.trim() } });
+
+      toast.success(
+        'Profile updated!',
+        emailChanged
+          ? 'Check your new email to confirm the change.'
+          : 'Your changes have been saved.'
+      );
+      setTimeout(() => {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/tabs/profile');
+        }
+      }, 1200);
+    } catch (e: any) {
+      toast.error('Update failed', e.message || 'Please try again.');
     } finally { setLoading(false); }
   };
 
@@ -50,7 +91,6 @@ export default function EditProfileScreen() {
       <StatusBar style="dark" />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
 
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
@@ -58,16 +98,10 @@ export default function EditProfileScreen() {
             </Svg>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Profile</Text>
-          <TouchableOpacity>
-            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-              <Circle cx="12" cy="12" r="3" stroke="#6B2D82" strokeWidth={1.8} />
-              <Path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="#6B2D82" strokeWidth={1.8} />
-            </Svg>
-          </TouchableOpacity>
+          <View style={{ width: 22 }} />
         </View>
 
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          {/* Avatar */}
           <View style={styles.avatarSection}>
             <View style={styles.avatarWrap}>
               <View style={styles.avatar}>
@@ -82,7 +116,6 @@ export default function EditProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Fields */}
           <View style={styles.form}>
             <Text style={styles.fieldLabel}>Full Name</Text>
             <View style={styles.inputWrap}>
@@ -111,27 +144,30 @@ export default function EditProfileScreen() {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
                 placeholderTextColor="#AEAEB2"
               />
             </View>
+            <Text style={styles.hint}>Changing this sends a confirmation link to the new address.</Text>
 
             <Text style={styles.fieldLabel}>Phone Number</Text>
-            <View style={[styles.inputWrap, styles.inputLocked]}>
+            <View style={styles.inputWrap}>
               <Text style={styles.flag}>🇳🇬</Text>
               <Text style={styles.dialCode}>+234</Text>
+              <View style={styles.dividerV} />
               <TextInput
                 style={[styles.input, { flex: 1 }]}
-                value={profile?.phone || 'Not set'}
-                editable={false}
+                value={phone}
+                onChangeText={(v) => setPhone(v.replace(/[^0-9]/g, ''))}
+                placeholder="803 123 4567"
+                keyboardType="phone-pad"
+                maxLength={10}
                 placeholderTextColor="#AEAEB2"
               />
-              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                  <Path d="M19 11H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2 2 0 00-2-2zM7 11V7a5 5 0 0110 0v4" stroke="#9E96A8" strokeWidth={1.8} strokeLinecap="round" />
-                </Svg>
-              </Svg>
             </View>
-            <Text style={styles.lockedNote}>Phone number cannot be changed as it identifies your account.</Text>
+            <Text style={styles.hint}>
+              Optional, but hosts use this to reach you about your booking. Not used to sign in.
+            </Text>
           </View>
 
           <PrimaryButton label="Save Changes" onPress={handleSave} loading={loading} />
@@ -178,9 +214,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5', borderRadius: 12,
     paddingHorizontal: 16, paddingVertical: 14,
   },
-  inputLocked: { opacity: 0.7 },
   input: { flex: 1, fontSize: 15, fontFamily: 'Poppins-Regular', color: '#1E1E1E', padding: 0 },
   flag: { fontSize: 18 },
   dialCode: { fontSize: 15, fontFamily: 'Poppins-Medium', color: '#1E1E1E', fontWeight: '500' },
-  lockedNote: { fontSize: 12, fontFamily: 'Poppins-Regular', color: '#9E96A8', marginTop: 4 },
+  dividerV: { width: 1, height: 20, backgroundColor: '#D1D1D6' },
+  hint: { fontSize: 12, fontFamily: 'Poppins-Regular', color: '#9E96A8', marginTop: 4 },
 });

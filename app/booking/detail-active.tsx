@@ -9,6 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useToast } from '../../components/ui/ToastContext';
 import { cancelBooking } from '../../lib/api';
+import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
 export default function BookingDetailActiveScreen() {
   const params = useLocalSearchParams();
@@ -186,14 +187,7 @@ export default function BookingDetailActiveScreen() {
       </ScrollView>
 
       {/* Floating support buttons */}
-      <View style={styles.floatingBtns}>
-        <TouchableOpacity style={styles.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/2348000000000')}>
-          <Text style={styles.floatingIcon}>💬</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL('tel:+2348000000000')}>
-          <Text style={styles.floatingIcon}>📞</Text>
-        </TouchableOpacity>
-      </View>
+      <FloatingSupportButtons />
     </SafeAreaView>
   );
 }

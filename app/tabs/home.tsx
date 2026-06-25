@@ -93,34 +93,52 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [error, setError] = useState(false);
+  const requestId = React.useRef(0);
+
+  // Load saved property IDs once on mount / when user changes — not on every filter switch
+  useEffect(() => {
+    if (!user) { setSavedIds([]); return; }
+    getSavedPropertyIds(user.id).then(setSavedIds).catch(() => {});
+  }, [user]);
+
   const loadData = useCallback(async () => {
+    const thisRequestId = ++requestId.current;
+    setError(false);
     try {
       const typeFilter = activeType === 'All' ? undefined : activeType.slice(0, -1);
       const [featuredData, allData] = await Promise.all([
         getFeaturedProperties(),
         getProperties(typeFilter ? { type: typeFilter } : undefined),
       ]);
-      setFeatured(featuredData.slice(0, 2));
-      setAllProperties(allData);
-      if (user) {
-        const saved = await getSavedPropertyIds(user.id);
-        setSavedIds(saved);
+      if (thisRequestId === requestId.current) {
+        setFeatured(featuredData.slice(0, 2));
+        setAllProperties(allData);
       }
     } catch (e) {
       console.error('Load error:', e);
+      if (thisRequestId === requestId.current) {
+        setError(true);
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (thisRequestId === requestId.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }, [activeType, user]);
+  }, [activeType]);
 
   const handleToggleSave = async (propertyId: string) => {
     if (!user) {
       router.push('/auth/login');
       return;
     }
-    const nowSaved = await toggleSavedProperty(user.id, propertyId);
-    setSavedIds(prev => nowSaved ? [...prev, propertyId] : prev.filter(id => id !== propertyId));
+    try {
+      const nowSaved = await toggleSavedProperty(user.id, propertyId);
+      setSavedIds(prev => nowSaved ? [...prev, propertyId] : prev.filter(id => id !== propertyId));
+    } catch (e) {
+      console.error('Failed to toggle save:', e);
+    }
   };
 
   useEffect(() => {
@@ -199,6 +217,14 @@ export default function HomeScreen() {
           <View style={styles.loader}>
             <ActivityIndicator size="large" color="#6B2D82" />
           </View>
+        ) : error ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>⚠️</Text>
+            <Text style={styles.emptyText}>Something went wrong loading properties</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={loadData}>
+              <Text style={styles.retryBtnText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <>
             {/* Featured */}
@@ -206,7 +232,9 @@ export default function HomeScreen() {
               <>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Featured</Text>
-                  <TouchableOpacity><Text style={styles.seeAll}>See all</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => setActiveType('All')}>
+                    <Text style={styles.seeAll}>See all</Text>
+                  </TouchableOpacity>
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.featuredScroll}>
                   {featured.map(item => (
@@ -219,9 +247,18 @@ export default function HomeScreen() {
                       <View style={styles.featuredImage}>
                         <PropertyImage uri={item.images?.[0]} />
                         {item.verified && <VerifiedBadge />}
-                        <TouchableOpacity style={styles.heartBtn}>
+                        <TouchableOpacity
+                          style={styles.heartBtn}
+                          onPress={() => handleToggleSave(item.id)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
                           <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                            <Path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke="#FFFFFF" strokeWidth={1.5} />
+                            <Path
+                              d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"
+                              stroke="#FFFFFF"
+                              fill={savedIds.includes(item.id) ? '#C9A84C' : 'none'}
+                              strokeWidth={1.5}
+                            />
                           </Svg>
                         </TouchableOpacity>
                       </View>
@@ -326,4 +363,6 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingVertical: 40, gap: 8 },
   emptyIcon: { fontSize: 48 },
   emptyText: { fontSize: 16, fontFamily: 'Poppins-Regular', color: '#9E96A8' },
+  retryBtn: { marginTop: 12, backgroundColor: '#6B2D82', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
+  retryBtnText: { fontSize: 14, fontFamily: 'Poppins-SemiBold', color: '#FFFFFF', fontWeight: '600' },
 });

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { PrimaryButton } from '../../../components/ui/PrimaryButton';
+import { FloatingSupportButtons } from '../../../components/ui/FloatingSupportButtons';
 
 export default function MinimumStayScreen() {
   const [voted, setVoted] = useState<'yes' | 'no' | null>(null);
@@ -96,14 +97,7 @@ export default function MinimumStayScreen() {
         <View style={{ height: 32 }} />
       </ScrollView>
 
-      <View style={styles.floatingBtns}>
-        <TouchableOpacity style={styles.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/2348000000000')}>
-          <Text style={styles.floatingIcon}>💬</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL('tel:+2348000000000')}>
-          <Text style={styles.floatingIcon}>📞</Text>
-        </TouchableOpacity>
-      </View>
+      <FloatingSupportButtons />
     </SafeAreaView>
   );
 }

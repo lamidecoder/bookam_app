@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Animated,
+  TouchableOpacity, Animated, TextInput,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,7 +10,8 @@ import Svg, { Path, Circle, Line } from 'react-native-svg';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 import { useAuth } from '../../hooks/useAuth';
-import { createBooking } from '../../lib/api';
+import { createBooking, updateProfile } from '../../lib/api';
+import { Validate } from '../../lib/security';
 
 function InfoBanner({ type, text }: { type: 'info' | 'warning'; text: string }) {
   const isInfo = type === 'info';
@@ -60,6 +61,7 @@ export default function BookingSummaryScreen() {
   const [checkedCancel, setCheckedCancel] = useState(false);
   const [checkedTerms, setCheckedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [phoneInput, setPhoneInput] = useState('');
   const toast = useToast();
 
   const canProceed = checkedCancel && checkedTerms;
@@ -95,8 +97,29 @@ export default function BookingSummaryScreen() {
       return;
     }
 
+    // No phone on file (common for Google sign-ups and email-only accounts
+    // that never added one) — collect it now, since the host needs a real
+    // way to reach the guest about check-in.
+    let phoneToSave: string | null = null;
+    if (!booking.guestPhone) {
+      if (!phoneInput.trim()) {
+        toast.error('Phone required', 'Please enter a phone number so the host can reach you.');
+        return;
+      }
+      const localFormat = phoneInput.trim().length === 10 ? `0${phoneInput.trim()}` : phoneInput.trim();
+      if (!Validate.phone(localFormat)) {
+        toast.error('Invalid phone', 'Enter a valid Nigerian number, e.g. 08031234567.');
+        return;
+      }
+      phoneToSave = `+234${localFormat.replace(/^0/, '')}`;
+    }
+
     setLoading(true);
     try {
+      if (phoneToSave) {
+        await updateProfile(user.id, { phone: phoneToSave });
+      }
+
       const created = await createBooking({
         user_id: user.id,
         property_id: booking.propertyId,
@@ -186,7 +209,26 @@ export default function BookingSummaryScreen() {
         {/* Guest info */}
         <Text style={styles.bookingForLabel}>Booking for</Text>
         <Text style={styles.guestName}>{booking.guestName}</Text>
-        <Text style={styles.guestPhone}>{booking.guestPhone}</Text>
+        {booking.guestPhone ? (
+          <Text style={styles.guestPhone}>{booking.guestPhone}</Text>
+        ) : (
+          <View style={styles.phoneInputWrap}>
+            <Text style={styles.dialCode}>🇳🇬 +234</Text>
+            <View style={styles.dividerV} />
+            <TextInput
+              style={styles.phoneInput}
+              value={phoneInput}
+              onChangeText={(v) => setPhoneInput(v.replace(/[^0-9]/g, ''))}
+              placeholder="803 123 4567"
+              placeholderTextColor="#AEAEB2"
+              keyboardType="phone-pad"
+              maxLength={10}
+            />
+          </View>
+        )}
+        {!booking.guestPhone && (
+          <Text style={styles.phoneHint}>The host needs this to reach you about your stay.</Text>
+        )}
 
         <View style={{ height: 20 }} />
 
@@ -271,6 +313,15 @@ const styles = StyleSheet.create({
   bookingForLabel: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#9E96A8', marginBottom: 4 },
   guestName: { fontSize: 15, fontWeight: '600', fontFamily: 'Poppins-SemiBold', color: '#1E1E1E' },
   guestPhone: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#6B6478', marginTop: 2 },
+  phoneInputWrap: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#F5F5F5', borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 10, marginTop: 6,
+  },
+  dialCode: { fontSize: 14, fontFamily: 'Poppins-Medium', color: '#1E1E1E', fontWeight: '500' },
+  dividerV: { width: 1, height: 18, backgroundColor: '#D1D1D6' },
+  phoneInput: { flex: 1, fontSize: 14, fontFamily: 'Poppins-Regular', color: '#1E1E1E', padding: 0 },
+  phoneHint: { fontSize: 11, fontFamily: 'Poppins-Regular', color: '#9E96A8', marginTop: 4 },
   banner: {
     flexDirection: 'row', alignItems: 'flex-start',
     borderRadius: 10, overflow: 'hidden', padding: 14, gap: 10,

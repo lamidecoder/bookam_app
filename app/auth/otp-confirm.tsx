@@ -7,9 +7,22 @@ import Svg, { Path } from 'react-native-svg';
 import { BookamLogo } from '../../components/ui/BookamLogo';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
+import { supabase } from '../../lib/supabase';
+
+/**
+ * IMPORTANT SUPABASE DASHBOARD SETUP REQUIRED:
+ * For this 6-digit OTP code to work, the "Reset Password" email template
+ * in Supabase must include {{ .Token }} — by default it only includes
+ * {{ .ConfirmationURL }} (a clickable link), which has no code to type.
+ *
+ * Fix: Supabase Dashboard → Authentication → Email Templates → Reset Password
+ * → edit the template to include {{ .Token }} somewhere in the email body,
+ * e.g. "Your code is: {{ .Token }}"
+ */
 
 export default function OTPConfirmScreen() {
   const params = useLocalSearchParams();
+  const email = params.email as string;
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputs = useRef<(TextInput | null)[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,10 +42,27 @@ export default function OTPConfirmScreen() {
     }
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const code = otp.join('');
     if (code.length < 6) { toast.error('Enter code', 'Enter the 6-digit code.'); return; }
-    router.push({ pathname: '/auth/new-password', params: { email: params.email, token: code } });
+    if (!email) { toast.error('Missing email', 'Please start the reset process again.'); router.replace('/auth/forgot-password'); return; }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: 'recovery',
+      });
+      if (error) throw error;
+
+      // Session is now active — proceed to set new password
+      router.push({ pathname: '/auth/new-password', params: { email } });
+    } catch (e: any) {
+      toast.error('Invalid code', e.message || 'The code is incorrect or has expired.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

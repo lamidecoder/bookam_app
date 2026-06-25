@@ -90,14 +90,20 @@ export async function getFeaturedProperties() {
 
 // Real-time subscription for properties
 export function subscribeToProperties(callback: (properties: any[]) => void) {
-  const subscription = supabase
-    .channel('properties')
+  const channelName = `properties-${Math.random().toString(36).slice(2)}`;
+  const channel = supabase
+    .channel(channelName)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'properties' }, async () => {
       const data = await getProperties();
       callback(data);
     })
     .subscribe();
-  return subscription;
+
+  return {
+    unsubscribe: () => {
+      supabase.removeChannel(channel);
+    },
+  };
 }
 
 // ============================================
@@ -158,8 +164,9 @@ export async function cancelBooking(bookingId: string) {
 
 // Real-time bookings
 export function subscribeToBookings(userId: string, callback: (bookings: any[]) => void) {
-  const subscription = supabase
-    .channel(`bookings:${userId}`)
+  const channelName = `bookings-${userId}-${Math.random().toString(36).slice(2)}`;
+  const channel = supabase
+    .channel(channelName)
     .on('postgres_changes', {
       event: '*', schema: 'public', table: 'bookings',
       filter: `user_id=eq.${userId}`,
@@ -168,7 +175,12 @@ export function subscribeToBookings(userId: string, callback: (bookings: any[]) 
       callback(data);
     })
     .subscribe();
-  return subscription;
+
+  return {
+    unsubscribe: () => {
+      supabase.removeChannel(channel);
+    },
+  };
 }
 
 // ============================================
@@ -271,6 +283,7 @@ export async function getProfile(userId: string) {
 export async function updateProfile(userId: string, updates: {
   full_name?: string;
   email?: string;
+  phone?: string;
   avatar_url?: string;
 }) {
   const { data, error } = await supabase

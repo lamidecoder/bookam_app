@@ -13,6 +13,7 @@ import { useToast } from '../../components/ui/ToastContext';
 import { useAuth } from '../../hooks/useAuth';
 import { getProperty, getBlockedDates, toggleSavedProperty, getSavedPropertyIds } from '../../lib/api';
 import { optimizedImageUrl } from '../../lib/cloudinary';
+import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
 const DAY_LABELS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -418,14 +419,7 @@ export default function PropertyDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.floatingBtns}>
-        <TouchableOpacity style={styles.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/2348000000000')}>
-          <Text style={styles.floatingIcon}>💬</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL('tel:+2348000000000')}>
-          <Text style={styles.floatingIcon}>📞</Text>
-        </TouchableOpacity>
-      </View>
+      <FloatingSupportButtons />
     </View>
   );
 }

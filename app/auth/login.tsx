@@ -11,6 +11,7 @@ import { BookamLogo } from '../../components/ui/BookamLogo';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
+import { signInWithGoogle } from '../../lib/googleAuth';
 
 function GoogleIcon() {
   return (
@@ -28,7 +29,22 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const toast = useToast();
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      const result = await signInWithGoogle();
+      if (result.success) {
+        if (router.canGoBack()) { router.back(); } else { router.replace('/tabs/home'); }
+      } else {
+        toast.error('Google sign-in failed', result.error);
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email.trim()) { toast.error('Email required', 'Enter your email address.'); return; }
@@ -37,7 +53,7 @@ export default function LoginScreen() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
-      router.replace('/tabs/home');
+      if (router.canGoBack()) { router.back(); } else { router.replace('/tabs/home'); }
     } catch (e: any) {
       toast.error('Login failed', e.message || 'Incorrect email or password.');
     } finally { setLoading(false); }
@@ -117,9 +133,14 @@ export default function LoginScreen() {
             <View style={styles.orLine} />
           </View>
 
-          <TouchableOpacity style={styles.googleBtn} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={[styles.googleBtn, googleLoading && { opacity: 0.6 }]}
+            activeOpacity={0.85}
+            onPress={handleGoogleSignIn}
+            disabled={googleLoading}
+          >
             <GoogleIcon />
-            <Text style={styles.googleText}>Continue with Google</Text>
+            <Text style={styles.googleText}>{googleLoading ? 'Signing in...' : 'Continue with Google'}</Text>
           </TouchableOpacity>
 
           <View style={styles.signupRow}>

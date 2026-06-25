@@ -5,6 +5,31 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 
+function WhatsAppIconSmall() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M17.6 6.32A8.86 8.86 0 0012.05 4C7.14 4 3.16 7.98 3.16 12.9c0 1.62.43 3.13 1.18 4.45L3 21l3.79-1.27a8.83 8.83 0 005.26 1.68h.01c4.91 0 8.89-3.98 8.89-8.9a8.86 8.86 0 00-2.62-6.27zM12.06 19.7a7.36 7.36 0 01-4.21-1.32l-.3-.19-2.6.87.87-2.55-.19-.31a7.39 7.39 0 01-1.34-4.27c0-4.09 3.34-7.43 7.43-7.43 1.98 0 3.85.78 5.25 2.19a7.35 7.35 0 012.18 5.25c0 4.1-3.34 7.43-7.43 7.43h-.01"
+        fill="#25D366"
+      />
+    </Svg>
+  );
+}
+
+function PhoneIconSmall() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z"
+        stroke="#6B2D82"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 const FAQS = [
   { id: 'cancellation', question: 'What is the cancellation policy?', icon: '🛡️', route: '/profile/faq/cancellation-policy' },
   { id: 'minimum-stay', question: 'How does the minimum stay work?', icon: '📅', route: '/profile/faq/minimum-stay' },
@@ -69,7 +94,7 @@ export default function HelpSupportScreen() {
             activeOpacity={0.8}
           >
             <View style={[styles.contactIcon, { backgroundColor: '#E8F8EF' }]}>
-              <Text style={styles.contactIconText}>💬</Text>
+              <WhatsAppIconSmall />
             </View>
             <View style={styles.contactInfo}>
               <Text style={styles.contactTitle}>Chat on WhatsApp</Text>
@@ -86,7 +111,7 @@ export default function HelpSupportScreen() {
             activeOpacity={0.8}
           >
             <View style={[styles.contactIcon, { backgroundColor: '#F0E6FA' }]}>
-              <Text style={styles.contactIconText}>📞</Text>
+              <PhoneIconSmall />
             </View>
             <View style={styles.contactInfo}>
               <Text style={styles.contactTitle}>Call Support</Text>

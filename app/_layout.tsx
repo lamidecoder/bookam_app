@@ -41,14 +41,18 @@ export default function RootLayout() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!initialRouteDone.current) return;
-      if (event === 'SIGNED_IN' && session) {
-        router.replace('/tabs/home');
-      } else if (event === 'SIGNED_OUT') {
+      // NOTE: SIGNED_IN navigation is intentionally NOT handled here.
+      // Each auth screen (login, register, otp-verify, Google sign-in)
+      // already navigates correctly after success — either back to the
+      // screen the user was browsing before being gated (e.g. property
+      // detail, with their selected dates intact), or to /tabs/home for
+      // first-time users coming from onboarding. A global forced redirect
+      // here would override that and always dump people on Home, losing
+      // their place.
+      if (event === 'SIGNED_OUT') {
         await goToLogin();
       } else if (event === 'PASSWORD_RECOVERY') {
         router.replace('/auth/new-password');
-      } else if (event === 'USER_UPDATED' && session) {
-        router.replace('/tabs/home');
       }
     });
 

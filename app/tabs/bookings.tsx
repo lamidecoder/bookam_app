@@ -10,6 +10,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { BookamLogo } from '../../components/ui/BookamLogo';
 import { useAuth } from '../../hooks/useAuth';
 import { getUserBookings, subscribeToBookings } from '../../lib/api';
+import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
 type BookingStatus = 'confirmed' | 'completed' | 'cancelled' | 'pending';
 
@@ -26,18 +27,27 @@ export default function BookingsScreen() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(false);
 
   const loadBookings = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+    setError(false);
     try {
       const data = await getUserBookings(user.id);
       setBookings(data);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      setError(true);
+    }
     finally { setLoading(false); setRefreshing(false); }
   };
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) { setLoading(false); return; }
     loadBookings();
     const sub = subscribeToBookings(user.id, setBookings);
     return () => { sub.unsubscribe(); };
@@ -90,6 +100,24 @@ export default function BookingsScreen() {
 
         {loading ? (
           <ActivityIndicator size="large" color="#6B2D82" style={{ marginTop: 60 }} />
+        ) : !user ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>🔒</Text>
+            <Text style={styles.emptyTitle}>Sign in to view bookings</Text>
+            <Text style={styles.emptySub}>Log in to see your upcoming and past stays.</Text>
+            <TouchableOpacity style={styles.exploreBtn} onPress={() => router.push('/auth/login')}>
+              <Text style={styles.exploreBtnText}>Log In</Text>
+            </TouchableOpacity>
+          </View>
+        ) : error ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>⚠️</Text>
+            <Text style={styles.emptyTitle}>Something went wrong</Text>
+            <Text style={styles.emptySub}>Could not load your bookings.</Text>
+            <TouchableOpacity style={styles.exploreBtn} onPress={loadBookings}>
+              <Text style={styles.exploreBtnText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
         ) : list.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>📋</Text>
@@ -199,14 +227,7 @@ export default function BookingsScreen() {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      <View style={styles.floatingBtns}>
-        <TouchableOpacity style={styles.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/2348000000000')}>
-          <Text style={styles.floatingIcon}>💬</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL('tel:+2348000000000')}>
-          <Text style={styles.floatingIcon}>📞</Text>
-        </TouchableOpacity>
-      </View>
+      <FloatingSupportButtons />
     </SafeAreaView>
   );
 }

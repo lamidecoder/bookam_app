@@ -53,7 +53,7 @@ export default function OTPVerifyScreen() {
     try {
       const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
       if (error) throw error;
-      router.replace('/tabs/home');
+      if (router.canGoBack()) { router.back(); } else { router.replace('/tabs/home'); }
     } catch (e: any) {
       toast.error('Invalid code', 'The code is incorrect or expired.');
     } finally { setLoading(false); }

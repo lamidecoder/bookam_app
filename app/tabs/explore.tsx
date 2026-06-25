@@ -11,6 +11,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { useAuth } from '../../hooks/useAuth';
 import { searchProperties, getSavedPropertyIds, toggleSavedProperty } from '../../lib/api';
 import { optimizedImageUrl } from '../../lib/cloudinary';
+import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
 const PROPERTY_TYPES = ['All', 'Hotels', 'Shortlets', 'Event Centers'];
 const AREAS = ['Lekki Phase 1', 'Ikoyi', 'Ikeja', 'Ajah', 'Victoria Island', 'Magodo', 'Surulere', 'Banana Island'];
@@ -44,6 +45,8 @@ export default function ExploreScreen() {
   const [results, setResults] = useState<any[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const requestId = React.useRef(0);
 
   const toggleArea = (area: string) =>
     setActiveAreas(prev => prev.includes(area) ? prev.filter(a => a !== area) : [...prev, area]);
@@ -51,27 +54,40 @@ export default function ExploreScreen() {
   const toggleAmenity = (id: string) =>
     setActiveAmenities(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]);
 
+  // Load saved property IDs once on mount / when user changes — not on every keystroke
+  useEffect(() => {
+    if (!user) { setSavedIds([]); return; }
+    getSavedPropertyIds(user.id).then(setSavedIds).catch(() => {});
+  }, [user]);
+
   const runSearch = useCallback(async () => {
+    const thisRequestId = ++requestId.current;
     setLoading(true);
+    setError(false);
     try {
       const data = await searchProperties({
-        query: search,
+        query: search.trim(),
         type: activeType === 'All' ? undefined : activeType.slice(0, -1),
         areas: activeAreas.length ? activeAreas : undefined,
         amenities: activeAmenities.length ? activeAmenities : undefined,
         guests,
       });
-      setResults(data);
-      if (user) {
-        const saved = await getSavedPropertyIds(user.id);
-        setSavedIds(saved);
+      // Ignore stale responses — only apply if this is still the latest request
+      if (thisRequestId === requestId.current) {
+        setResults(data);
       }
     } catch (e) {
       console.error(e);
+      if (thisRequestId === requestId.current) {
+        setError(true);
+        setResults([]);
+      }
     } finally {
-      setLoading(false);
+      if (thisRequestId === requestId.current) {
+        setLoading(false);
+      }
     }
-  }, [search, activeType, activeAreas, activeAmenities, guests, user]);
+  }, [search, activeType, activeAreas, activeAmenities, guests]);
 
   useEffect(() => {
     const debounce = setTimeout(runSearch, 400);
@@ -80,8 +96,16 @@ export default function ExploreScreen() {
 
   const handleToggleSave = async (propertyId: string) => {
     if (!user) { router.push('/auth/login'); return; }
-    const nowSaved = await toggleSavedProperty(user.id, propertyId);
-    setSavedIds(prev => nowSaved ? [...prev, propertyId] : prev.filter(id => id !== propertyId));
+    try {
+      const nowSaved = await toggleSavedProperty(user.id, propertyId);
+      setSavedIds(prev => nowSaved ? [...prev, propertyId] : prev.filter(id => id !== propertyId));
+    } catch (e) {
+      console.error('Failed to toggle save:', e);
+    }
+  };
+
+  const handleOpenProperty = (item: any) => {
+    router.push({ pathname: '/search/property-detail', params: { propertyId: item.id, ...item } });
   };
 
   return (
@@ -115,7 +139,7 @@ export default function ExploreScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
         <Text style={styles.sectionLabel}>Property Type</Text>
         <View style={styles.typeRow}>
@@ -176,6 +200,15 @@ export default function ExploreScreen() {
 
         {loading ? (
           <ActivityIndicator size="large" color="#6B2D82" style={{ marginTop: 40 }} />
+        ) : error ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>⚠️</Text>
+            <Text style={styles.emptyTitle}>Something went wrong</Text>
+            <Text style={styles.emptySub}>Could not load properties. Pull to retry.</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={runSearch}>
+              <Text style={styles.retryBtnText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
         ) : results.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>🔍</Text>
@@ -187,7 +220,7 @@ export default function ExploreScreen() {
             <TouchableOpacity
               key={item.id}
               style={styles.resultCard}
-              onPress={() => router.push({ pathname: '/search/property-detail', params: { propertyId: item.id, ...item } })}
+              onPress={() => handleOpenProperty(item)}
               activeOpacity={0.9}
             >
               <View style={styles.resultImage}>
@@ -222,7 +255,7 @@ export default function ExploreScreen() {
                     ₦{item.price_per_night?.toLocaleString()}
                     <Text style={styles.resultUnit}>{item.type === 'Event Center' ? '/event' : '/night'}</Text>
                   </Text>
-                  <TouchableOpacity style={styles.bookBtn}>
+                  <TouchableOpacity style={styles.bookBtn} onPress={() => handleOpenProperty(item)}>
                     <Text style={styles.bookBtnText}>Book Now</Text>
                   </TouchableOpacity>
                 </View>
@@ -234,14 +267,7 @@ export default function ExploreScreen() {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      <View style={styles.floatingBtns}>
-        <TouchableOpacity style={styles.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/2348000000000')}>
-          <Text style={styles.floatingIcon}>💬</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL('tel:+2348000000000')}>
-          <Text style={styles.floatingIcon}>📞</Text>
-        </TouchableOpacity>
-      </View>
+      <FloatingSupportButtons />
     </SafeAreaView>
   );
 }
@@ -301,6 +327,8 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 48 },
   emptyTitle: { fontSize: 18, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E' },
   emptySub: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#9E96A8', textAlign: 'center' },
+  retryBtn: { marginTop: 12, backgroundColor: '#6B2D82', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
+  retryBtnText: { fontSize: 14, fontFamily: 'Poppins-SemiBold', color: '#FFFFFF', fontWeight: '600' },
   floatingBtns: { position: 'absolute', bottom: 100, right: 20, gap: 12 },
   whatsappBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#25D366', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
   callBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#6B2D82', alignItems: 'center', justifyContent: 'center', shadowColor: '#6B2D82', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 6 },
