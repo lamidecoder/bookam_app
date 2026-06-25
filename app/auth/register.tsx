@@ -38,11 +38,17 @@ export default function RegisterScreen() {
     setGoogleLoading(true);
     try {
       const result = await signInWithGoogle();
-      if (result.success) {
-        if (router.canGoBack()) { router.back(); } else { router.replace('/tabs/home'); }
-      } else {
-        toast.error('Google sign-in failed', result.error);
+      if (!result.success) {
+        toast.error('Google sign-in failed', (result as { success: false; error: string }).error);
+        return;
       }
+      toast.success('Account created!', 'Welcome to Bookam.');
+      // Always forward to Home, never back. Register can be reached via
+      // Login's "Sign up" link (router.push), which would leave Login
+      // sitting underneath — going back there after a NEW account is
+      // created would be confusing, not helpful. Account creation only
+      // ever moves forward.
+      router.replace('/tabs/home');
     } finally {
       setGoogleLoading(false);
     }

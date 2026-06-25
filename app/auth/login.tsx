@@ -36,11 +36,12 @@ export default function LoginScreen() {
     setGoogleLoading(true);
     try {
       const result = await signInWithGoogle();
-      if (result.success) {
-        if (router.canGoBack()) { router.back(); } else { router.replace('/tabs/home'); }
-      } else {
-        toast.error('Google sign-in failed', result.error);
+      if (!result.success) {
+        toast.error('Google sign-in failed', (result as { success: false; error: string }).error);
+        return;
       }
+      toast.success('Welcome back!', 'You are now logged in.');
+      if (router.canGoBack()) { router.back(); } else { router.replace('/tabs/home'); }
     } finally {
       setGoogleLoading(false);
     }
@@ -53,6 +54,7 @@ export default function LoginScreen() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
+      toast.success('Welcome back!', 'You are now logged in.');
       if (router.canGoBack()) { router.back(); } else { router.replace('/tabs/home'); }
     } catch (e: any) {
       toast.error('Login failed', e.message || 'Incorrect email or password.');

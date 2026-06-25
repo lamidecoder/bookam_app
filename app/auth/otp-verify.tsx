@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TextInput,
+  View, Text, StyleSheet,
   TouchableOpacity, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -9,17 +9,17 @@ import { StatusBar } from 'expo-status-bar';
 import Svg, { Path } from 'react-native-svg';
 import { BookamLogo } from '../../components/ui/BookamLogo';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { OtpInput } from '../../components/ui/OtpInput';
 import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
 
 export default function OTPVerifyScreen() {
   const params = useLocalSearchParams();
   const email = params.email as string || '';
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otp, setOtp] = useState('');
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const [loading, setLoading] = useState(false);
-  const inputs = useRef<(TextInput | null)[]>([]);
   const toast = useToast();
 
   useEffect(() => {
@@ -32,28 +32,14 @@ export default function OTPVerifyScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleChange = (val: string, idx: number) => {
-    if (!/^\d*$/.test(val)) return;
-    const next = [...otp];
-    next[idx] = val.slice(-1);
-    setOtp(next);
-    if (val && idx < 5) inputs.current[idx + 1]?.focus();
-  };
-
-  const handleKeyPress = (e: any, idx: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !otp[idx] && idx > 0) {
-      inputs.current[idx - 1]?.focus();
-    }
-  };
-
   const handleVerify = async () => {
-    const code = otp.join('');
-    if (code.length < 6) { toast.error('Enter code', 'Enter the 6-digit code.'); return; }
+    if (otp.length < 6) { toast.error('Enter code', 'Enter the 6-digit code.'); return; }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
+      const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'email' });
       if (error) throw error;
-      if (router.canGoBack()) { router.back(); } else { router.replace('/tabs/home'); }
+      toast.success('Email verified!', 'Your account is ready to go.');
+      router.replace('/tabs/home');
     } catch (e: any) {
       toast.error('Invalid code', 'The code is incorrect or expired.');
     } finally { setLoading(false); }
@@ -64,6 +50,7 @@ export default function OTPVerifyScreen() {
     await supabase.auth.resend({ type: 'signup', email });
     setCountdown(60);
     setCanResend(false);
+    setOtp('');
     toast.success('Code sent!', 'A new code has been sent to your email.');
   };
 
@@ -75,7 +62,6 @@ export default function OTPVerifyScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.content}>
 
-          {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
@@ -92,30 +78,17 @@ export default function OTPVerifyScreen() {
           <Text style={styles.sub}>
             We sent a 6-digit code to your email{'\n'}
             <Text style={styles.emailHighlight}>{maskedEmail}</Text>
-            <Text>. Enter it below.</Text>
+            <Text>. Enter it below — or just paste it, it'll fill in automatically.</Text>
           </Text>
 
-          {/* OTP boxes */}
-          <View style={styles.otpRow}>
-            {otp.map((digit, idx) => (
-              <TextInput
-                key={idx}
-                ref={r => { inputs.current[idx] = r; }}
-                style={[
-                  styles.otpBox,
-                  digit && styles.otpBoxFilled,
-                  idx === 0 && !digit && styles.otpBoxActive,
-                ]}
-                value={digit}
-                onChangeText={v => handleChange(v, idx)}
-                onKeyPress={e => handleKeyPress(e, idx)}
-                keyboardType="number-pad"
-                maxLength={1}
-                selectTextOnFocus
-                textAlign="center"
-              />
-            ))}
-          </View>
+          <OtpInput length={6} value={otp} onChange={(val) => {
+            setOtp(val);
+            if (val.length === 6) {
+              // Auto-submit the moment all 6 digits are in, whether typed
+              // or pasted — feels instant, like a real banking app.
+              setTimeout(() => handleVerify(), 100);
+            }
+          }} />
 
           <View style={{ flex: 1 }} />
 
@@ -147,16 +120,6 @@ const styles = StyleSheet.create({
   heading: { fontSize: 24, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E', textAlign: 'center', marginBottom: 12 },
   sub: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#6B6478', textAlign: 'center', lineHeight: 22, marginBottom: 40 },
   emailHighlight: { color: '#6B2D82', fontFamily: 'Poppins-SemiBold', fontWeight: '600' },
-  otpRow: { flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
-  otpBox: {
-    flex: 1, aspectRatio: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14, borderWidth: 1.5, borderColor: '#D1C9E8',
-    fontSize: 22, fontWeight: '700', fontFamily: 'Poppins-Bold',
-    color: '#1E1E1E',
-  },
-  otpBoxFilled: { borderColor: '#6B2D82', backgroundColor: '#F5F3FF' },
-  otpBoxActive: { borderColor: '#6B2D82', borderWidth: 2 },
   resendWrap: { alignItems: 'center', marginTop: 16, gap: 4 },
   resendLabel: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#1E1E1E' },
   resendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
