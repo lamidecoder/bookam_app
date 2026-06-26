@@ -8,6 +8,7 @@ import { BookamLogo } from '../../components/ui/BookamLogo';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
+import { RateLimiter } from '../../lib/security';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -16,6 +17,11 @@ export default function ForgotPasswordScreen() {
 
   const handleSend = async () => {
     if (!email.trim() || !email.includes('@')) { toast.error('Invalid email', 'Enter a valid email address.'); return; }
+    const rateLimitKey = `forgot-password:${email.trim().toLowerCase()}`;
+    if (!RateLimiter.check(rateLimitKey, 3, 15 * 60 * 1000)) {
+      toast.error('Too many attempts', `Please wait ${RateLimiter.getRemainingTime(rateLimitKey)} minutes before trying again.`);
+      return;
+    }
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {

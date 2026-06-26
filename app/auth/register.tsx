@@ -12,6 +12,7 @@ import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
 import { signInWithGoogle } from '../../lib/googleAuth';
+import { RateLimiter } from '../../lib/security';
 
 function GoogleIcon() {
   return (
@@ -60,6 +61,12 @@ export default function RegisterScreen() {
     if (password.length < 8) { toast.error('Weak password', 'Password must be at least 8 characters.'); return; }
     if (!agreed) { toast.error('Agreement required', 'Please accept the Terms of Service.'); return; }
 
+    const rateLimitKey = `register:${email.trim().toLowerCase()}`;
+    if (!RateLimiter.check(rateLimitKey, 5, 15 * 60 * 1000)) {
+      toast.error('Too many attempts', `Please wait ${RateLimiter.getRemainingTime(rateLimitKey)} minutes before trying again.`);
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -68,6 +75,27 @@ export default function RegisterScreen() {
         options: { data: { full_name: fullName } },
       });
       if (error) throw error;
+
+      // Supabase's signUp() does NOT throw an error for an email that
+      // already has a confirmed account — this is intentional on their
+      // part, to prevent attackers from using the signup form to check
+      // which emails are registered (email enumeration). Instead, the
+      // official way to detect this client-side is checking if
+      // `identities` came back empty: that means no new identity was
+      // created because one already exists.
+      //
+      // Without this check, an existing user re-registering would: get
+      // sent another confirmation OTP (confusing — they already have an
+      // account), AND have their real profile silently overwritten with
+      // whatever name they happened to type in this new attempt. Both
+      // are real bugs, not just inconvenience.
+      const isExistingAccount = data.user && data.user.identities?.length === 0;
+
+      if (isExistingAccount) {
+        toast.info('Account already exists', 'Please log in instead.');
+        router.replace('/auth/login');
+        return;
+      }
 
       if (data.user) {
         await supabase.from('profiles').upsert({

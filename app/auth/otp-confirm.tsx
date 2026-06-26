@@ -9,6 +9,7 @@ import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { OtpInput } from '../../components/ui/OtpInput';
 import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
+import { RateLimiter } from '../../lib/security';
 
 /**
  * IMPORTANT SUPABASE DASHBOARD SETUP REQUIRED:
@@ -39,6 +40,12 @@ export default function OTPConfirmScreen() {
   const handleConfirm = async () => {
     if (otp.length < 6) { toast.error('Enter code', 'Enter the 6-digit code.'); return; }
     if (!email) { toast.error('Missing email', 'Please start the reset process again.'); router.replace('/auth/forgot-password'); return; }
+
+    const rateLimitKey = `otp-confirm:${email}`;
+    if (!RateLimiter.check(rateLimitKey, 5, 15 * 60 * 1000)) {
+      toast.error('Too many attempts', `Please wait ${RateLimiter.getRemainingTime(rateLimitKey)} minutes before trying again.`);
+      return;
+    }
 
     setLoading(true);
     try {

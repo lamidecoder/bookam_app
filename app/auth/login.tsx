@@ -11,6 +11,7 @@ import { BookamLogo } from '../../components/ui/BookamLogo';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
+import { RateLimiter } from '../../lib/security';
 import { signInWithGoogle } from '../../lib/googleAuth';
 
 function GoogleIcon() {
@@ -50,6 +51,11 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     if (!email.trim()) { toast.error('Email required', 'Enter your email address.'); return; }
     if (!password) { toast.error('Password required', 'Enter your password.'); return; }
+    const rateLimitKey = `login:${email.trim().toLowerCase()}`;
+    if (!RateLimiter.check(rateLimitKey, 5, 15 * 60 * 1000)) {
+      toast.error('Too many attempts', `Please wait ${RateLimiter.getRemainingTime(rateLimitKey)} minutes before trying again.`);
+      return;
+    }
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });

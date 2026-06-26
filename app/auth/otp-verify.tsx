@@ -12,6 +12,7 @@ import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { OtpInput } from '../../components/ui/OtpInput';
 import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
+import { RateLimiter } from '../../lib/security';
 
 export default function OTPVerifyScreen() {
   const params = useLocalSearchParams();
@@ -34,6 +35,11 @@ export default function OTPVerifyScreen() {
 
   const handleVerify = async () => {
     if (otp.length < 6) { toast.error('Enter code', 'Enter the 6-digit code.'); return; }
+    const rateLimitKey = `otp-verify:${email}`;
+    if (!RateLimiter.check(rateLimitKey, 5, 15 * 60 * 1000)) {
+      toast.error('Too many attempts', `Please wait ${RateLimiter.getRemainingTime(rateLimitKey)} minutes before trying again.`);
+      return;
+    }
     setLoading(true);
     try {
       const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'email' });
