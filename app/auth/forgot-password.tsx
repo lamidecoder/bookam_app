@@ -7,6 +7,7 @@ import Svg, { Path } from 'react-native-svg';
 import { BookamLogo } from '../../components/ui/BookamLogo';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
+import * as AuthSession from 'expo-auth-session';
 import { supabase } from '../../lib/supabase';
 import { RateLimiter } from '../../lib/security';
 
@@ -25,7 +26,11 @@ export default function ForgotPasswordScreen() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: 'exp+bookam://auth/callback',
+        // Auto-detects the right redirect for the current environment -
+        // exp:// in Expo Go during dev, bookam:// in a real build. Was
+        // previously hardcoded to the Expo Go format only, which would
+        // have silently broken password reset in production builds.
+        redirectTo: AuthSession.makeRedirectUri({ scheme: 'bookam', path: 'auth/callback' }),
       });
       if (error) throw error;
       router.push({ pathname: '/auth/otp-confirm', params: { email: email.trim() } });

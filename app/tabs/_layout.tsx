@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import { usePushNotifications } from '../../hooks/usePushNotifications';
 
 function HomeIcon({ color }: { color: string }) {
   return (
@@ -47,6 +48,11 @@ function TabIcon({ focused, icon, label }: { focused: boolean; icon: React.React
 }
 
 export default function TabsLayout() {
+  // Registers the device's push token and saves it to profiles.push_token
+  // the moment a logged-in user enters the tabs. Without this call, the
+  // hook existed but was never invoked anywhere - no token was ever
+  // saved, so send-booking-notification could never reach anyone.
+  usePushNotifications();
   const insets = useSafeAreaInsets();
   // Base 72px is the design height on a device with NO gesture bar
   // (older phones, or Android 3-button nav). On phones with a home

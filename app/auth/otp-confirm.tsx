@@ -8,6 +8,7 @@ import { BookamLogo } from '../../components/ui/BookamLogo';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { OtpInput } from '../../components/ui/OtpInput';
 import { useToast } from '../../components/ui/ToastContext';
+import * as AuthSession from 'expo-auth-session';
 import { supabase } from '../../lib/supabase';
 import { RateLimiter } from '../../lib/security';
 
@@ -72,7 +73,7 @@ export default function OTPConfirmScreen() {
     if (!canResend || !email) return;
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'bookam://auth/callback',
+        redirectTo: AuthSession.makeRedirectUri({ scheme: 'bookam', path: 'auth/callback' }),
       });
       if (error) throw error;
       setCountdown(60);

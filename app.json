@@ -24,6 +24,9 @@
               "exp+bookam"
             ]
           }
+        ],
+        "UIBackgroundModes": [
+          "remote-notification"
         ]
       }
     },
@@ -50,6 +53,11 @@
             "DEFAULT"
           ]
         }
+      ],
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -71,6 +79,9 @@
       "eas": {
         "projectId": "3341966b-e4ac-4383-bf21-25921c8e6ce0"
       }
+    },
+    "notification": {
+      "color": "#6B2D82"
     }
   }
 }

@@ -9,6 +9,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { BookamLogo } from '../../components/ui/BookamLogo';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
+import * as AuthSession from 'expo-auth-session';
 import { supabase } from '../../lib/supabase';
 import { RateLimiter } from '../../lib/security';
 
@@ -38,7 +39,7 @@ export default function VerifyEmailScreen() {
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: email as string,
-        options: { emailRedirectTo: 'exp+bookam://auth/callback' },
+        options: { emailRedirectTo: AuthSession.makeRedirectUri({ scheme: 'bookam', path: 'auth/callback' }) },
       });
 
       if (error) throw error;
