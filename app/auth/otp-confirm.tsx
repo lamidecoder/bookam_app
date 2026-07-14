@@ -37,8 +37,12 @@ export default function OTPConfirmScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleConfirm = async () => {
-    if (otp.length < 6) { toast.error('Enter code', 'Enter the 6-digit code.'); return; }
+  // codeOverride: the auto-submit fires before React re-renders with the
+  // final digit, so reading `otp` state here would get the old 5-digit
+  // value and reject valid codes. Pass the fresh value directly.
+  const handleConfirm = async (codeOverride?: string) => {
+    const code = codeOverride ?? otp;
+    if (code.length < 6) { toast.error('Enter code', 'Enter the 6-digit code.'); return; }
     if (!email) { toast.error('Missing email', 'Please start the reset process again.'); router.replace('/auth/forgot-password'); return; }
 
     const rateLimitKey = `otp-confirm:${email}`;
@@ -51,7 +55,7 @@ export default function OTPConfirmScreen() {
     try {
       const { error } = await supabase.auth.verifyOtp({
         email,
-        token: otp,
+        token: code,
         type: 'recovery',
       });
       if (error) throw error;
@@ -104,12 +108,12 @@ export default function OTPConfirmScreen() {
           <OtpInput length={6} value={otp} onChange={(val) => {
             setOtp(val);
             if (val.length === 6) {
-              setTimeout(() => handleConfirm(), 100);
+              setTimeout(() => handleConfirm(val), 100);
             }
           }} />
 
           <View style={{ height: 24 }} />
-          <PrimaryButton label="Confirm Code" onPress={handleConfirm} loading={loading} />
+          <PrimaryButton label="Confirm Code" onPress={() => handleConfirm()} loading={loading} />
 
           <View style={styles.resendRow}>
             <Text style={styles.resendText}>Didn't receive it? </Text>

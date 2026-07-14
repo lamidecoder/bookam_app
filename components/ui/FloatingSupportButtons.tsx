@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 function WhatsAppIcon() {
@@ -39,24 +40,31 @@ type Props = {
   /** Set false to hide one of the two buttons */
   showWhatsapp?: boolean;
   showCall?: boolean;
-  /** Distance from the bottom of the screen — defaults to clearing the tab bar */
+  /** Extra distance ABOVE the device's safe area — defaults to clearing
+   * a bottom action bar / tab bar. The device's own safe-area inset
+   * (home indicator / gesture bar) is always added on top of this so
+   * the buttons never sit crowded against it on any phone. */
   bottom?: number;
 };
 
-const DEFAULT_WHATSAPP = '2348000000000';
-const DEFAULT_PHONE = '+2348000000000';
+// BookamFast Nigeria Ltd. support contact — 09034145636, 9AM-9PM WAT.
+// Converted to international format: WhatsApp needs digits only (no +
+// or leading 0), tel: links need the + prefix.
+const DEFAULT_WHATSAPP = '2349034145636';
+const DEFAULT_PHONE = '+2349034145636';
 
 export function FloatingSupportButtons({
   whatsappNumber = DEFAULT_WHATSAPP,
   phoneNumber = DEFAULT_PHONE,
   showWhatsapp = true,
   showCall = true,
-  bottom = 100,
+  bottom = 90,
 }: Props) {
+  const insets = useSafeAreaInsets();
   if (!showWhatsapp && !showCall) return null;
 
   return (
-    <View style={[styles.container, { bottom }]}>
+    <View style={[styles.container, { bottom: bottom + insets.bottom }]}>
       {showWhatsapp && (
         <TouchableOpacity
           style={styles.whatsappBtn}

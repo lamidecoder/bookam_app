@@ -95,7 +95,7 @@ export default function VerificationScreen() {
 
         <PrimaryButton label="Get Verified Now" onPress={() => {}} />
         <View style={{ height: 12 }} />
-        <TouchableOpacity style={styles.contactBtn} onPress={() => Linking.openURL('https://wa.me/2348000000000')}>
+        <TouchableOpacity style={styles.contactBtn} onPress={() => Linking.openURL('https://wa.me/2349034145636')}>
           <Text style={styles.contactBtnIcon}>🎧</Text>
           <Text style={styles.contactBtnText}>Contact Support</Text>
         </TouchableOpacity>

@@ -3,6 +3,7 @@ import {
   TouchableOpacity, Text, StyleSheet,
   ActivityIndicator, ViewStyle, Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type Props = {
   label: string;
@@ -16,44 +17,58 @@ type Props = {
 export function PrimaryButton({ label, onPress, loading, disabled, style, variant = 'primary' }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
 
-  const handlePressIn = () => {
-    Animated.spring(scale, {
-      toValue: 0.97,
-      tension: 200,
-      friction: 10,
-      useNativeDriver: true,
-    }).start();
+  const pressIn = () => {
+    Animated.spring(scale, { toValue: 0.97, tension: 250, friction: 12, useNativeDriver: true }).start();
   };
 
-  const handlePressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      tension: 200,
-      friction: 10,
-      useNativeDriver: true,
-    }).start();
+  const pressOut = () => {
+    Animated.spring(scale, { toValue: 1, tension: 200, friction: 10, useNativeDriver: true }).start();
   };
 
   const isSecondary = variant === 'secondary';
+  const isDisabled = disabled || loading;
+
+  if (isSecondary) {
+    return (
+      <Animated.View style={[{ transform: [{ scale }] }, style]}>
+        <TouchableOpacity
+          style={[styles.btn, styles.secondary, isDisabled && styles.disabledSecondary]}
+          onPress={onPress}
+          onPressIn={pressIn}
+          onPressOut={pressOut}
+          activeOpacity={1}
+          disabled={isDisabled}
+        >
+          {loading
+            ? <ActivityIndicator color="#6B2D82" />
+            : <Text style={styles.labelSecondary}>{label}</Text>
+          }
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }
 
   return (
-    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+    <Animated.View style={[{ transform: [{ scale }] }, style, isDisabled && { opacity: 0.6 }]}>
       <TouchableOpacity
-        style={[
-          styles.btn,
-          isSecondary ? styles.secondary : styles.primary,
-          (disabled || loading) && styles.disabled,
-        ]}
         onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
         activeOpacity={1}
-        disabled={disabled || loading}
+        disabled={isDisabled}
+        style={{ borderRadius: 14, overflow: 'hidden' }}
       >
-        {loading
-          ? <ActivityIndicator color={isSecondary ? '#6B2D82' : '#fff'} />
-          : <Text style={[styles.label, isSecondary && styles.labelSecondary]}>{label}</Text>
-        }
+        <LinearGradient
+          colors={['#8B3DAF', '#6B2D82', '#521169']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.btn}
+        >
+          {loading
+            ? <ActivityIndicator color="#FFFFFF" />
+            : <Text style={styles.label}>{label}</Text>
+          }
+        </LinearGradient>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -66,20 +81,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primary: {
-    backgroundColor: '#6B2D82',
-    shadowColor: '#6B2D82',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
-  },
   secondary: {
     backgroundColor: 'transparent',
     borderWidth: 1.5,
     borderColor: '#6B2D82',
+    borderRadius: 14,
   },
-  disabled: { opacity: 0.55, shadowOpacity: 0 },
+  disabledSecondary: { opacity: 0.55 },
   label: {
     fontSize: 16,
     fontWeight: '600',
@@ -87,5 +95,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.3,
   },
-  labelSecondary: { color: '#6B2D82' },
+  labelSecondary: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+    color: '#6B2D82',
+    letterSpacing: 0.3,
+  },
 });

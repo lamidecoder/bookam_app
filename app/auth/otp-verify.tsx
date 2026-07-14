@@ -17,6 +17,7 @@ import { RateLimiter } from '../../lib/security';
 export default function OTPVerifyScreen() {
   const params = useLocalSearchParams();
   const email = params.email as string || '';
+  const fullName = params.fullName as string || '';
   const [otp, setOtp] = useState('');
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
@@ -33,8 +34,14 @@ export default function OTPVerifyScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleVerify = async () => {
-    if (otp.length < 6) { toast.error('Enter code', 'Enter the 6-digit code.'); return; }
+  // codeOverride fixes the auto-submit stale-state bug: when OtpInput's
+  // onChange fires with the 6th digit and immediately auto-submits, the
+  // `otp` state variable hasn't re-rendered yet - reading it here would
+  // read the OLD 5-digit value and randomly reject valid codes
+  // (especially on paste). Passing the fresh value directly avoids that.
+  const handleVerify = async (codeOverride?: string) => {
+    const code = codeOverride ?? otp;
+    if (code.length < 6) { toast.error('Enter code', 'Enter the 6-digit code.'); return; }
     const rateLimitKey = `otp-verify:${email}`;
     if (!RateLimiter.check(rateLimitKey, 5, 15 * 60 * 1000)) {
       toast.error('Too many attempts', `Please wait ${RateLimiter.getRemainingTime(rateLimitKey)} minutes before trying again.`);
@@ -42,8 +49,30 @@ export default function OTPVerifyScreen() {
     }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'email' });
+      const { data, error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
       if (error) throw error;
+
+      // A session exists NOW - this is the first moment RLS will accept
+      // the insert (auth.uid() finally equals the new user's id).
+      // Creating the profile earlier, in register.tsx, silently failed.
+      const userId = data.user?.id ?? data.session?.user?.id;
+      if (userId) {
+        const { error: profileError } = await supabase.from('profiles').upsert({
+          id: userId,
+          full_name: fullName || email.split('@')[0],
+          email,
+          terms_accepted: true,
+          terms_accepted_at: new Date().toISOString(),
+        });
+        if (profileError) {
+          await supabase.from('profiles').upsert({
+            id: userId,
+            full_name: fullName || email.split('@')[0],
+            email,
+          });
+        }
+      }
+
       toast.success('Email verified!', 'Your account is ready to go.');
       router.replace('/tabs/home');
     } catch (e: any) {
@@ -92,13 +121,13 @@ export default function OTPVerifyScreen() {
             if (val.length === 6) {
               // Auto-submit the moment all 6 digits are in, whether typed
               // or pasted — feels instant, like a real banking app.
-              setTimeout(() => handleVerify(), 100);
+              setTimeout(() => handleVerify(val), 100);
             }
           }} />
 
           <View style={{ flex: 1 }} />
 
-          <PrimaryButton label="Verify" onPress={handleVerify} loading={loading} />
+          <PrimaryButton label="Verify" onPress={() => handleVerify()} loading={loading} />
 
           <View style={styles.resendWrap}>
             <Text style={styles.resendLabel}>Didn't get the code?</Text>

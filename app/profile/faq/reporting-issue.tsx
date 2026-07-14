@@ -99,7 +99,7 @@ export default function ReportingIssueScreen() {
           </View>
         </View>
 
-        <PrimaryButton label="🎧  Contact Support" onPress={() => Linking.openURL('https://wa.me/2348000000000')} />
+        <PrimaryButton label="🎧  Contact Support" onPress={() => Linking.openURL('https://wa.me/2349034145636')} />
         <View style={{ height: 32 }} />
       </ScrollView>
 

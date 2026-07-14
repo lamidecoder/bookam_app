@@ -13,6 +13,11 @@ import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
 import { signInWithGoogle } from '../../lib/googleAuth';
 import { RateLimiter } from '../../lib/security';
+import { Linking } from 'react-native';
+
+const TERMS_URL = 'https://bookamfast.com/terms';
+const PRIVACY_URL = 'https://bookamfast.com/privacy';
+const TERMS_VERSION = '1.0';
 
 function GoogleIcon() {
   return (
@@ -36,9 +41,13 @@ export default function RegisterScreen() {
   const toast = useToast();
 
   const handleGoogleSignIn = async () => {
+    if (!agreed) {
+      toast.error('Agreement required', 'Please accept the Terms of Service first.');
+      return;
+    }
     setGoogleLoading(true);
     try {
-      const result = await signInWithGoogle();
+      const result = await signInWithGoogle(true, TERMS_VERSION);
       if (!result.success) {
         toast.error('Google sign-in failed', (result as { success: false; error: string }).error);
         return;
@@ -97,15 +106,12 @@ export default function RegisterScreen() {
         return;
       }
 
-      if (data.user) {
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          full_name: fullName,
-          email,
-        });
-      }
-
-      router.push({ pathname: '/auth/otp-verify', params: { email } });
+      // NOTE: profile creation intentionally does NOT happen here. With
+      // email confirmation enabled, signUp() returns no session yet, so
+      // auth.uid() is null and RLS silently blocks the insert - no error
+      // shown, no profile ever created. It's created in otp-verify.tsx
+      // right after verifyOtp() succeeds, when a real session exists.
+      router.push({ pathname: '/auth/otp-verify', params: { email, fullName } });
     } catch (e: any) {
       toast.error('Registration failed', e.message || 'Please try again.');
     } finally { setLoading(false); }
@@ -192,21 +198,23 @@ export default function RegisterScreen() {
           <Text style={styles.hint}>Minimum 8 characters</Text>
 
           {/* Terms checkbox */}
-          <TouchableOpacity style={styles.checkRow} onPress={() => setAgreed(v => !v)} activeOpacity={0.8}>
-            <View style={[styles.checkbox, agreed && styles.checkboxActive]}>
-              {agreed && (
-                <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
-                  <Path d="M5 12l5 5L20 7" stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-                </Svg>
-              )}
-            </View>
-            <Text style={styles.checkLabel}>
+          <View style={styles.checkRow}>
+            <TouchableOpacity onPress={() => setAgreed(v => !v)} activeOpacity={0.8} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <View style={[styles.checkbox, agreed && styles.checkboxActive]}>
+                {agreed && (
+                  <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+                    <Path d="M5 12l5 5L20 7" stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                  </Svg>
+                )}
+              </View>
+            </TouchableOpacity>
+            <Text style={styles.checkLabel} onPress={() => setAgreed(v => !v)}>
               I agree to the{' '}
-              <Text style={styles.link}>Terms of Service</Text>
+              <Text style={styles.link} onPress={() => Linking.openURL(TERMS_URL)}>Terms of Service</Text>
               {' '}and{' '}
-              <Text style={styles.link}>Privacy Policy</Text>
+              <Text style={styles.link} onPress={() => Linking.openURL(PRIVACY_URL)}>Privacy Policy</Text>
             </Text>
-          </TouchableOpacity>
+          </View>
 
           <View style={{ height: 24 }} />
           <PrimaryButton label="Create Account" onPress={handleRegister} loading={loading} />

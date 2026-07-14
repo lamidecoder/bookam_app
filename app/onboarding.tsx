@@ -11,8 +11,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
-const scale = (size) => (width / 390) * size;
-const vscale = (size) => (height / 844) * size;
+const scale = (size: number) => (width / 390) * size;
+const vscale = (size: number) => (height / 844) * size;
 
 const SLIDES = [
   {
@@ -41,7 +41,7 @@ const SLIDES = [
 export default function OnboardingScreen() {
   const [showSplash, setShowSplash] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
-  const flatRef = useRef(null);
+  const flatRef = useRef<FlatList>(null);
   const splashOpacity = useRef(new Animated.Value(1)).current;
   const slidesOpacity = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
@@ -59,7 +59,7 @@ export default function OnboardingScreen() {
     return () => clearTimeout(timer);
   }, []);
 
-  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
     if (viewableItems.length > 0) setActiveIndex(viewableItems[0].index ?? 0);
   });
 

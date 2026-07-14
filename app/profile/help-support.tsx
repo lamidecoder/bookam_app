@@ -85,7 +85,7 @@ export default function HelpSupportScreen() {
         <View style={styles.contactCard}>
           <TouchableOpacity
             style={styles.contactRow}
-            onPress={() => Linking.openURL('https://wa.me/2348000000000')}
+            onPress={() => Linking.openURL('https://wa.me/2349034145636')}
             activeOpacity={0.8}
           >
             <View style={[styles.contactIcon, { backgroundColor: '#E8F8EF' }]}>
@@ -102,7 +102,7 @@ export default function HelpSupportScreen() {
           <View style={styles.faqDivider} />
           <TouchableOpacity
             style={styles.contactRow}
-            onPress={() => Linking.openURL('tel:+2348000000000')}
+            onPress={() => Linking.openURL('tel:+2349034145636')}
             activeOpacity={0.8}
           >
             <View style={[styles.contactIcon, { backgroundColor: '#F0E6FA' }]}>
@@ -110,7 +110,7 @@ export default function HelpSupportScreen() {
             </View>
             <View style={styles.contactInfo}>
               <Text style={styles.contactTitle}>Call Support</Text>
-              <Text style={styles.contactSub}>Available 8AM — 10PM daily</Text>
+              <Text style={styles.contactSub}>Available 9AM — 9PM daily</Text>
             </View>
             <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
               <Path d="M9 18l6-6-6-6" stroke="#9E96A8" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />

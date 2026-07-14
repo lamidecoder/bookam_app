@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 
 function HomeIcon({ color }: { color: string }) {
@@ -46,8 +47,18 @@ function TabIcon({ focused, icon, label }: { focused: boolean; icon: React.React
 }
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+  // Base 72px is the design height on a device with NO gesture bar
+  // (older phones, or Android 3-button nav). On phones with a home
+  // indicator / gesture pill (iPhone X+, most modern Android), we add
+  // the device's actual bottom inset on top of that so the icons never
+  // sit crowded against the gesture bar — this is what "smooth on all
+  // devices" needs: it's dynamic per-device, not a guessed fixed number.
+  const tabBarHeight = 56 + Math.max(insets.bottom, Platform.OS === 'android' ? 8 : 0);
+  const tabBarStyle = [styles.tabBar, { height: tabBarHeight, paddingBottom: Math.max(insets.bottom, 8) }];
+
   return (
-    <Tabs screenOptions={{ headerShown: false, tabBarStyle: styles.tabBar, tabBarShowLabel: false }}>
+    <Tabs screenOptions={{ headerShown: false, tabBarStyle, tabBarShowLabel: false }}>
       <Tabs.Screen name="home" options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon={<HomeIcon color={focused ? '#6B2D82' : '#9E96A8'} />} label="Home" /> }} />
       <Tabs.Screen name="explore" options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon={<SearchIcon color={focused ? '#6B2D82' : '#9E96A8'} />} label="Search" /> }} />
       <Tabs.Screen name="bookings" options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon={<BookingsIcon color={focused ? '#6B2D82' : '#9E96A8'} />} label="Bookings" /> }} />
@@ -59,7 +70,7 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#F0EBF8',
-    height: 72, paddingBottom: 8, paddingTop: 8, elevation: 12,
+    paddingTop: 8, elevation: 12,
     shadowColor: '#6B2D82', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.08, shadowRadius: 12,
   },
   tabItem: { alignItems: 'center', gap: 3, minWidth: 60 },

@@ -43,10 +43,17 @@ import { supabase } from './supabase';
 WebBrowser.maybeCompleteAuthSession();
 
 export type GoogleSignInResult =
-  | { success: true }
-  | { success: false; error: string };
+  | { success: true; isNewUser: boolean }
+  | { success: false; error: string; needsTerms?: boolean };
 
-export async function signInWithGoogle(): Promise<GoogleSignInResult> {
+/**
+ * @param termsAccepted Pass true ONLY when the user has explicitly ticked
+ *   the Terms checkbox (register screen). From the login screen pass
+ *   false: existing users sign straight in, but a BRAND-NEW Google user
+ *   will be signed out again and told to register - no account persists
+ *   without recorded consent (NDPA 2023).
+ */
+export async function signInWithGoogle(termsAccepted = false, termsVersion = '1.0'): Promise<GoogleSignInResult> {
   try {
     const redirectUri = AuthSession.makeRedirectUri({ scheme: 'bookam' });
 
@@ -87,35 +94,67 @@ export async function signInWithGoogle(): Promise<GoogleSignInResult> {
       return { success: false, error: sessionError.message };
     }
 
-    // First-time Google sign-up: no profiles row exists yet for this user.
-    // Without this, the profile screen, edit-profile prefill, and booking
-    // summary's guest name would all silently show blank/fallback values.
-    const { data: { user: googleUser } } = await supabase.auth.getUser();
-    if (googleUser) {
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', googleUser.id)
-        .maybeSingle();
-
-      if (!existingProfile) {
-        const fullName =
-          googleUser.user_metadata?.full_name ||
-          googleUser.user_metadata?.name ||
-          googleUser.email?.split('@')[0] ||
-          'Guest';
-
-        await supabase.from('profiles').upsert({
-          id: googleUser.id,
-          full_name: fullName,
-          email: googleUser.email,
-          avatar_url: googleUser.user_metadata?.avatar_url || googleUser.user_metadata?.picture || null,
-        });
-      }
-    }
-
-    return { success: true };
+    return _finishSignIn(termsAccepted, termsVersion);
   } catch (e: any) {
     return { success: false, error: e.message || 'Something went wrong with Google sign-in.' };
   }
+}
+
+/**
+ * Consent-aware completion, run with a live session.
+ * - Existing profile -> normal sign-in.
+ * - New user + terms accepted -> create profile WITH the consent record.
+ * - New user + terms NOT accepted (login-screen path) -> sign out
+ *   immediately and refuse: no profile row and no session are kept.
+ *   The person is sent to register, where the checkbox is mandatory.
+ */
+async function _finishSignIn(termsAccepted: boolean, termsVersion: string): Promise<GoogleSignInResult> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: 'Could not retrieve your account. Please try again.' };
+
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (existing) {
+    return { success: true, isNewUser: false };
+  }
+
+  if (!termsAccepted) {
+    await supabase.auth.signOut();
+    return {
+      success: false,
+      needsTerms: true,
+      error: 'Please create an account and accept the Terms of Service first.',
+    };
+  }
+
+  const fullName =
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    user.email?.split('@')[0] ||
+    'Guest';
+
+  const { error: profileError } = await supabase.from('profiles').upsert({
+    id: user.id,
+    full_name: fullName,
+    email: user.email,
+    avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+    terms_accepted: true,
+    terms_accepted_at: new Date().toISOString(),
+    terms_version: termsVersion,
+  });
+  if (profileError) {
+    // terms_* columns may not exist yet if the migration wasn't run -
+    // still create the basic profile rather than leaving it blank.
+    await supabase.from('profiles').upsert({
+      id: user.id,
+      full_name: fullName,
+      email: user.email,
+      avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+    });
+  }
+  return { success: true, isNewUser: true };
 }

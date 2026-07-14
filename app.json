@@ -14,7 +14,18 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.bookam.app"
+      "bundleIdentifier": "com.bookam.app",
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLName": "bookam",
+            "CFBundleURLSchemes": [
+              "bookam",
+              "exp+bookam"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "package": "com.bookam.app",

@@ -36,9 +36,15 @@ export default function LoginScreen() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const result = await signInWithGoogle();
+      const result = await signInWithGoogle(false);
       if (!result.success) {
-        toast.error('Google sign-in failed', (result as { success: false; error: string }).error);
+        const failed = result as { success: false; error: string; needsTerms?: boolean };
+        if (failed.needsTerms) {
+          toast.info('One more step', 'Please accept our Terms of Service to create your account.');
+          router.replace('/auth/register');
+          return;
+        }
+        toast.error('Google sign-in failed', failed.error);
         return;
       }
       toast.success('Welcome back!', 'You are now logged in.');

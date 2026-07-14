@@ -85,7 +85,7 @@ export default function MinimumStayScreen() {
           </View>
         </View>
 
-        <PrimaryButton label="🎧  Contact Support" onPress={() => Linking.openURL('https://wa.me/2348000000000')} />
+        <PrimaryButton label="🎧  Contact Support" onPress={() => Linking.openURL('https://wa.me/2349034145636')} />
         <View style={{ height: 12 }} />
         <TouchableOpacity style={styles.browseBtn} onPress={() => router.back()}>
           <Text style={styles.browseBtnText}>Browse Other Topics</Text>
