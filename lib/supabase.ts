@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = 'https://sudjewavhnwdgpojjrrc.supabase.co';
@@ -30,8 +31,24 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const CHUNK_SIZE = 1800; // safely under the 2048 byte limit
 const CHUNK_COUNT_SUFFIX = '_chunks';
 
+// expo-secure-store is a NATIVE-ONLY module — it has no implementation in
+// a web browser or Node.js (e.g. Metro's server-side static rendering).
+// Calling it outside a real iOS/Android runtime throws "getValueWithKeyAsync
+// is not a function", and because that happens deep inside Supabase's own
+// client initialization, it's an UNCAUGHT exception that crashes the
+// entire Metro/Node process, not just one screen — this took down the
+// whole dev server, including Android testing running in the same
+// session. This app never ships to web, but Expo Router can still
+// attempt to prepare a web bundle in the background depending on config,
+// so this in-memory fallback exists purely so that path can never crash
+// again, even by accident.
+const memoryFallback = new Map<string, string>();
+const isNative = Platform.OS === 'ios' || Platform.OS === 'android';
+
 const SecureStoreAdapter = {
   async getItem(key: string): Promise<string | null> {
+    if (!isNative) return memoryFallback.get(key) ?? null;
+
     const chunkCountStr = await SecureStore.getItemAsync(key + CHUNK_COUNT_SUFFIX);
 
     // Not chunked — either a small legacy value, or doesn't exist
@@ -50,6 +67,8 @@ const SecureStoreAdapter = {
   },
 
   async setItem(key: string, value: string): Promise<void> {
+    if (!isNative) { memoryFallback.set(key, value); return; }
+
     // If this key was previously chunked (e.g. a Google session that's
     // now being replaced by a smaller email/password session), clean up
     // the old numbered chunks first so they don't linger as orphaned data.
@@ -79,6 +98,8 @@ const SecureStoreAdapter = {
   },
 
   async removeItem(key: string): Promise<void> {
+    if (!isNative) { memoryFallback.delete(key); return; }
+
     const chunkCountStr = await SecureStore.getItemAsync(key + CHUNK_COUNT_SUFFIX);
     if (chunkCountStr) {
       const chunkCount = parseInt(chunkCountStr, 10);
