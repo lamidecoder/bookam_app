@@ -25,7 +25,19 @@ export default function NewPasswordScreen() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       toast.success('Password reset!', 'You can now log in with your new password.');
-      setTimeout(() => router.replace('/auth/login'), 1500);
+      // Delay just long enough for the toast to be visible, then end the
+      // recovery session. updateUser() only updates the password field,
+      // it does NOT clear or invalidate the current (recovery) session -
+      // leaving it active meant the next sign-in on the login screen
+      // happened while a stale recovery-flagged session was still in
+      // storage, which caused the app's auth-state listener to treat
+      // that fresh login as ANOTHER password-recovery event and bounce
+      // the user right back to this screen instead of home. signOut()
+      // itself triggers the app's global SIGNED_OUT listener, which
+      // handles navigating to login - no separate router.replace() call
+      // needed here, that would just be a redundant second navigation
+      // to the same destination.
+      setTimeout(() => { supabase.auth.signOut(); }, 1500);
     } catch (e: any) {
       toast.error('Failed', e.message || 'Could not reset password.');
     } finally { setLoading(false); }

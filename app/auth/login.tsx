@@ -48,7 +48,13 @@ export default function LoginScreen() {
         return;
       }
       toast.success('Welcome back!', 'You are now logged in.');
-      if (router.canGoBack()) { router.back(); } else { router.replace('/tabs/home'); }
+      // Always explicitly go to home — no ambiguity. router.canGoBack()
+      // + router.back() used to be here, but canGoBack() can evaluate
+      // true due to how Expo Router's nested (auth) group stack retains
+      // its own internal history, so back() was returning WITHIN the
+      // auth flow instead of actually leaving it. After a successful
+      // sign-in there is only one correct destination.
+      router.replace('/tabs/home');
     } finally {
       setGoogleLoading(false);
     }
@@ -67,7 +73,7 @@ export default function LoginScreen() {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
       toast.success('Welcome back!', 'You are now logged in.');
-      if (router.canGoBack()) { router.back(); } else { router.replace('/tabs/home'); }
+      router.replace('/tabs/home');
     } catch (e: any) {
       toast.error('Login failed', e.message || 'Incorrect email or password.');
     } finally { setLoading(false); }

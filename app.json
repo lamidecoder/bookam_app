@@ -66,7 +66,14 @@
       "expo-web-browser",
       "expo-secure-store",
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-navigation-bar",
+        {
+          "style": "light",
+          "enforceContrast": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -79,10 +86,6 @@
     },
     "notification": {
       "color": "#6B2D82"
-    },
-    "androidNavigationBar": {
-      "barStyle": "dark-content",
-      "backgroundColor": "#FFFFFF"
     }
   }
 }
