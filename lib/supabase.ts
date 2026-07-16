@@ -45,6 +45,35 @@ const CHUNK_COUNT_SUFFIX = '_chunks';
 const memoryFallback = new Map<string, string>();
 const isNative = Platform.OS === 'ios' || Platform.OS === 'android';
 
+// Per-key write lock. Chunked writes are multiple sequential SecureStore
+// calls (delete old chunks, write new chunks, write the chunk-count
+// marker, delete the plain key) - NOT atomic. If two writes to the same
+// key overlap (e.g. Supabase's client persisting the session from
+// setSession(), then immediately persisting again as part of its own
+// internal auth-state-change handling), the second write can start
+// while the first is still mid-sequence. The result: a chunk-count
+// marker that says "3 chunks" while only 1 has actually been written by
+// the newer call - the next read finds a missing chunk, returns null,
+// and Supabase correctly (from its point of view) treats that as "no
+// session". This is exactly the "Welcome back! ...then bounced back to
+// Login with no error" symptom, and it's a genuinely different failure
+// mode than the SIZE problem chunking alone fixes - a value can be
+// perfectly sized AND still get corrupted by an interleaved write.
+const writeLocks = new Map<string, Promise<void>>();
+
+async function withWriteLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const previous = writeLocks.get(key) ?? Promise.resolve();
+  let release: () => void;
+  const current = new Promise<void>((resolve) => { release = resolve; });
+  writeLocks.set(key, previous.then(() => current));
+  await previous;
+  try {
+    return await fn();
+  } finally {
+    release!();
+  }
+}
+
 const SecureStoreAdapter = {
   async getItem(key: string): Promise<string | null> {
     if (!isNative) return memoryFallback.get(key) ?? null;
@@ -69,46 +98,53 @@ const SecureStoreAdapter = {
   async setItem(key: string, value: string): Promise<void> {
     if (!isNative) { memoryFallback.set(key, value); return; }
 
-    // If this key was previously chunked (e.g. a Google session that's
-    // now being replaced by a smaller email/password session), clean up
-    // the old numbered chunks first so they don't linger as orphaned data.
-    const existingChunkCountStr = await SecureStore.getItemAsync(key + CHUNK_COUNT_SUFFIX);
-    if (existingChunkCountStr) {
-      const existingChunkCount = parseInt(existingChunkCountStr, 10);
-      for (let i = 0; i < existingChunkCount; i++) {
-        await SecureStore.deleteItemAsync(`${key}_${i}`).catch(() => {});
+    // Serialized per key — a second setItem() call on the same key waits
+    // for the first to fully finish before it starts, so the multi-step
+    // chunked write sequence can never interleave with another one.
+    return withWriteLock(key, async () => {
+      // If this key was previously chunked (e.g. a Google session that's
+      // now being replaced by a smaller email/password session), clean up
+      // the old numbered chunks first so they don't linger as orphaned data.
+      const existingChunkCountStr = await SecureStore.getItemAsync(key + CHUNK_COUNT_SUFFIX);
+      if (existingChunkCountStr) {
+        const existingChunkCount = parseInt(existingChunkCountStr, 10);
+        for (let i = 0; i < existingChunkCount; i++) {
+          await SecureStore.deleteItemAsync(`${key}_${i}`).catch(() => {});
+        }
       }
-    }
 
-    if (value.length <= CHUNK_SIZE) {
-      await SecureStore.deleteItemAsync(key + CHUNK_COUNT_SUFFIX).catch(() => {});
-      await SecureStore.setItemAsync(key, value);
-      return;
-    }
+      if (value.length <= CHUNK_SIZE) {
+        await SecureStore.deleteItemAsync(key + CHUNK_COUNT_SUFFIX).catch(() => {});
+        await SecureStore.setItemAsync(key, value);
+        return;
+      }
 
-    const chunkCount = Math.ceil(value.length / CHUNK_SIZE);
-    for (let i = 0; i < chunkCount; i++) {
-      const chunk = value.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      await SecureStore.setItemAsync(`${key}_${i}`, chunk);
-    }
-    await SecureStore.setItemAsync(key + CHUNK_COUNT_SUFFIX, String(chunkCount));
-    // The plain key itself is no longer used when chunked — clear it so
-    // a stale unchunked value can't be read by mistake.
-    await SecureStore.deleteItemAsync(key).catch(() => {});
+      const chunkCount = Math.ceil(value.length / CHUNK_SIZE);
+      for (let i = 0; i < chunkCount; i++) {
+        const chunk = value.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        await SecureStore.setItemAsync(`${key}_${i}`, chunk);
+      }
+      await SecureStore.setItemAsync(key + CHUNK_COUNT_SUFFIX, String(chunkCount));
+      // The plain key itself is no longer used when chunked — clear it so
+      // a stale unchunked value can't be read by mistake.
+      await SecureStore.deleteItemAsync(key).catch(() => {});
+    });
   },
 
   async removeItem(key: string): Promise<void> {
     if (!isNative) { memoryFallback.delete(key); return; }
 
-    const chunkCountStr = await SecureStore.getItemAsync(key + CHUNK_COUNT_SUFFIX);
-    if (chunkCountStr) {
-      const chunkCount = parseInt(chunkCountStr, 10);
-      for (let i = 0; i < chunkCount; i++) {
-        await SecureStore.deleteItemAsync(`${key}_${i}`);
+    return withWriteLock(key, async () => {
+      const chunkCountStr = await SecureStore.getItemAsync(key + CHUNK_COUNT_SUFFIX);
+      if (chunkCountStr) {
+        const chunkCount = parseInt(chunkCountStr, 10);
+        for (let i = 0; i < chunkCount; i++) {
+          await SecureStore.deleteItemAsync(`${key}_${i}`);
+        }
+        await SecureStore.deleteItemAsync(key + CHUNK_COUNT_SUFFIX);
       }
-      await SecureStore.deleteItemAsync(key + CHUNK_COUNT_SUFFIX);
-    }
-    await SecureStore.deleteItemAsync(key).catch(() => {});
+      await SecureStore.deleteItemAsync(key).catch(() => {});
+    });
   },
 };
 

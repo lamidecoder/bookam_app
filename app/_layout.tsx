@@ -37,7 +37,6 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!fontsLoaded && !fontError) return;
-    SplashScreen.hideAsync();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!initialRouteDone.current) return;
@@ -64,7 +63,23 @@ export default function RootLayout() {
         router.replace(onboarded ? '/auth/login' : '/onboarding');
       }
       initialRouteDone.current = true;
+      // Hide the native splash only now — the very first frame the user
+      // sees is already the correct destination, not a flash of
+      // whatever index.tsx used to render first.
+      SplashScreen.hideAsync();
     });
+
+    // Safety net: getSession() reads from local encrypted storage, so it
+    // should resolve near-instantly — but if anything unexpected ever
+    // stalls it, this guarantees the splash screen can't hang forever
+    // and leave the user staring at a frozen app.
+    const safetyTimeout = setTimeout(() => {
+      if (!initialRouteDone.current) {
+        router.replace('/auth/login');
+        initialRouteDone.current = true;
+        SplashScreen.hideAsync();
+      }
+    }, 5000);
 
     const handleDeepLink = async (url: string) => {
       if (!url) return;
@@ -100,6 +115,7 @@ export default function RootLayout() {
     return () => {
       subscription.unsubscribe();
       linkSub.remove();
+      clearTimeout(safetyTimeout);
     };
   }, [fontsLoaded, fontError]);
 

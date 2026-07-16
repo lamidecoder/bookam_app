@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#EEE9F5"
+      "backgroundColor": "#6B2D82"
     },
     "ios": {
       "supportsTablet": false,
@@ -58,7 +58,8 @@
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "POST_NOTIFICATIONS"
-      ]
+      ],
+      "launchMode": "singleTask"
     },
     "plugins": [
       "expo-router",
@@ -78,6 +79,10 @@
     },
     "notification": {
       "color": "#6B2D82"
+    },
+    "androidNavigationBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#FFFFFF"
     }
   }
 }
