@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Animated, TextInput,
+  TouchableOpacity, Animated, TextInput, Linking,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,6 +12,8 @@ import { useToast } from '../../components/ui/ToastContext';
 import { useAuth } from '../../hooks/useAuth';
 import { createBooking, updateProfile } from '../../lib/api';
 import { Validate } from '../../lib/security';
+
+const TERMS_URL = 'https://bookamfast.com/terms';
 
 function InfoBanner({ type, text }: { type: 'info' | 'warning'; text: string }) {
   const isInfo = type === 'info';
@@ -65,6 +67,14 @@ export default function BookingSummaryScreen() {
   const toast = useToast();
 
   const canProceed = checkedCancel && checkedTerms;
+
+  const getInitials = () => {
+    if (profile?.full_name) {
+      const parts = profile.full_name.split(' ');
+      return parts.map((p: string) => p[0]).join('').toUpperCase().slice(0, 2);
+    }
+    return 'JD';
+  };
 
   const booking = {
     propertyId: params.propertyId as string,
@@ -163,7 +173,7 @@ export default function BookingSummaryScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Booking Summary</Text>
         <View style={styles.avatarSmall}>
-          <Text style={styles.avatarText}>AO</Text>
+          <Text style={styles.avatarText}>{getInitials()}</Text>
         </View>
       </View>
 
@@ -262,7 +272,7 @@ export default function BookingSummaryScreen() {
           label={
             <Text style={styles.checkLabel}>
               I agree to the{' '}
-              <Text style={styles.termsLink}>Bookam Terms and Conditions</Text>
+              <Text style={styles.termsLink} onPress={() => Linking.openURL(TERMS_URL)}>Bookam Terms and Conditions</Text>
             </Text>
           }
         />

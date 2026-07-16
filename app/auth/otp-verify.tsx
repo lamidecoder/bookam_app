@@ -82,14 +82,19 @@ export default function OTPVerifyScreen() {
 
   const handleResend = async () => {
     if (!canResend) return;
-    await supabase.auth.resend({ type: 'signup', email });
-    setCountdown(60);
-    setCanResend(false);
-    setOtp('');
-    toast.success('Code sent!', 'A new code has been sent to your email.');
+    try {
+      const { error } = await supabase.auth.resend({ type: 'signup', email });
+      if (error) throw error;
+      setCountdown(60);
+      setCanResend(false);
+      setOtp('');
+      toast.success('Code sent!', 'A new code has been sent to your email.');
+    } catch (e: any) {
+      toast.error('Could not resend', e.message || 'Please try again shortly.');
+    }
   };
 
-  const maskedEmail = email ? email.replace(/(.{2})(.*)(@.*)/, '$1***$3') : 'johndoe@example.com';
+  const maskedEmail = email ? email.replace(/(.{2})(.*)(@.*)/, '$1***$3') : 'your email';
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -158,7 +163,7 @@ const styles = StyleSheet.create({
   resendWrap: { alignItems: 'center', marginTop: 16, gap: 4 },
   resendLabel: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#1E1E1E' },
   resendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  resendLink: { fontSize: 14, fontFamily: 'Poppins-Bold', fontWeight: '700', color: '#9E96A8' },
+  resendLink: { fontSize: 14, fontFamily: 'Poppins-Bold', fontWeight: '700', color: '#6B2D82' },
   resendLinkDisabled: { color: '#9E96A8' },
   countdown: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#9E96A8' },
 });

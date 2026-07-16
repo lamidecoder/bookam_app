@@ -183,7 +183,7 @@ export default function BookingDetailReviewScreen() {
           </View>
 
           {/* Download receipt */}
-          <TouchableOpacity style={styles.receiptBtn}>
+          <TouchableOpacity style={styles.receiptBtn} onPress={() => toast.info('Coming soon', 'Downloadable receipts will be available in a future update.')}>
             <Text style={styles.receiptIcon}>🧾</Text>
             <Text style={styles.receiptText}>Download Receipt</Text>
           </TouchableOpacity>

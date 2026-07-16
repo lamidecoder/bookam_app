@@ -18,10 +18,10 @@ export default function BookingConfirmedScreen() {
   const slideAnim = useRef(new Animated.Value(60)).current;
 
   const ref = params.ref as string || `BKM-${Date.now().toString().slice(-8)}`;
-  const propertyName = params.propertyName as string || 'Lekki Sky Loft';
-  const checkIn = params.checkIn as string || '15 July 2025';
-  const checkOut = params.checkOut as string || '17 July 2025';
-  const total = Number(params.total) || 170000;
+  const propertyName = params.propertyName as string || 'Your property';
+  const checkIn = params.checkIn as string || '—';
+  const checkOut = params.checkOut as string || '—';
+  const total = Number(params.total) || 0;
 
   useEffect(() => {
     // Entrance animations

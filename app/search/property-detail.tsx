@@ -147,13 +147,23 @@ export default function PropertyDetailScreen() {
 
   const handleToggleSave = async () => {
     if (!user) { router.push('/auth/login'); return; }
-    const nowSaved = await toggleSavedProperty(user.id, propertyId);
-    setSaved(nowSaved);
+    try {
+      const nowSaved = await toggleSavedProperty(user.id, propertyId);
+      setSaved(nowSaved);
+    } catch (e) {
+      console.error('Failed to toggle save:', e);
+      toast.error('Failed', 'Could not save this property. Please try again.');
+    }
   };
 
   const handleBookNow = () => {
     if (!selectedCheckIn || !selectedCheckOut) {
       toast.warning('Select dates', 'Please select check-in and check-out dates.');
+      return;
+    }
+    const minStay = property.min_stay || 1;
+    if (nights < minStay) {
+      toast.warning('Minimum stay required', `This property requires a minimum stay of ${minStay} night${minStay > 1 ? 's' : ''}.`);
       return;
     }
     if (!user) {

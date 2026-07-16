@@ -210,7 +210,7 @@ export async function toggleSavedProperty(userId: string, propertyId: string) {
     .select('id')
     .eq('user_id', userId)
     .eq('property_id', propertyId)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     await supabase.from('saved_properties').delete().eq('user_id', userId).eq('property_id', propertyId);

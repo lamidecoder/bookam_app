@@ -110,7 +110,7 @@ export default function EditProfileScreen() {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.changePhotoBtn}>
+            <TouchableOpacity style={styles.changePhotoBtn} onPress={() => toast.info('Coming soon', 'Profile photo uploads will be available in a future update.')}>
               <Text style={styles.cameraIcon}>📷</Text>
               <Text style={styles.changePhotoText}>Change Photo</Text>
             </TouchableOpacity>
