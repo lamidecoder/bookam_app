@@ -66,14 +66,7 @@
       "expo-web-browser",
       "expo-secure-store",
       "expo-font",
-      "expo-asset",
-      [
-        "expo-navigation-bar",
-        {
-          "style": "light",
-          "enforceContrast": true
-        }
-      ]
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

@@ -122,6 +122,33 @@ async function _finishSignIn(termsAccepted: boolean, termsVersion: string): Prom
     return { success: true, isNewUser: false };
   }
 
+  // No profile exists for THIS specific Google identity — but that's not
+  // the same as "this person has never used Bookam before". If they
+  // already registered with email + password using this same email
+  // address, Supabase (depending on the project's identity-linking
+  // setting) can create a SEPARATE auth identity for the Google
+  // sign-in rather than linking it to their existing account. Without
+  // this check, that would silently create a second, disconnected
+  // profile sharing the same email — their real booking history and
+  // saved properties would be invisible whenever they signed in via
+  // Google instead of email/password, with no way to reconcile the two
+  // from inside the app.
+  if (user.email) {
+    const { data: emailMatch } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', user.email)
+      .maybeSingle();
+
+    if (emailMatch) {
+      await supabase.auth.signOut();
+      return {
+        success: false,
+        error: 'An account with this email already exists. Please log in with your email and password instead.',
+      };
+    }
+  }
+
   if (!termsAccepted) {
     await supabase.auth.signOut();
     return {

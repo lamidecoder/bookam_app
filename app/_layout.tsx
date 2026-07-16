@@ -12,7 +12,6 @@ import {
 } from '@expo-google-fonts/poppins';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
-import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { ToastProvider } from '../components/ui/ToastContext';
@@ -30,27 +29,6 @@ export default function RootLayout() {
   });
 
   const initialRouteDone = useRef(false);
-
-  // Runtime enforcement of the navigation bar's icon/background style.
-  // The static app.json androidNavigationBar config alone was not being
-  // honored when the device's SYSTEM is in dark mode — Android can
-  // still override manifest-level nav bar theming for parts of the UI
-  // based on system dark-mode settings. This app has no dark-mode UI of
-  // its own (single light theme throughout), so the nav bar needs to be
-  // explicitly pinned at runtime rather than left to follow the system,
-  // or the back/home/recent-apps icons can become invisible (dark icons
-  // rendered against a system-dark-themed bar).
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    // 'light' = light bar background with DARK icons - correct for this
-    // app, which has no dark-mode UI of its own and stays light-themed
-    // regardless of the device's system theme. Never use 'auto' here:
-    // that follows the system theme independently of the app's own
-    // forced-light content, which is what caused the icons to become
-    // inconsistent/invisible specifically when the device was in dark
-    // mode.
-    NavigationBar.setStyle('light');
-  }, []);
 
   const goToLogin = async () => {
     await AsyncStorage.setItem('bookam_onboarded', 'true');

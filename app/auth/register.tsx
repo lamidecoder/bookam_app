@@ -52,12 +52,23 @@ export default function RegisterScreen() {
         toast.error('Google sign-in failed', (result as { success: false; error: string }).error);
         return;
       }
-      toast.success('Account created!', 'Welcome to Bookam.');
+      // result.success narrows the type here, so isNewUser is available.
+      if (result.isNewUser) {
+        toast.success('Account created!', 'Welcome to Bookam.');
+      } else {
+        // They already had a Google-linked Bookam account and landed on
+        // Sign Up instead of Log In - signInWithGoogle() correctly
+        // returned their EXISTING account rather than creating a
+        // duplicate, but claiming "Account created!" here would be
+        // straightforwardly false and confusing ("wait, did I already
+        // have an account?").
+        toast.success('Welcome back!', 'You already have an account with Bookam.');
+      }
       // Always forward to Home, never back. Register can be reached via
       // Login's "Sign up" link (router.push), which would leave Login
-      // sitting underneath — going back there after a NEW account is
-      // created would be confusing, not helpful. Account creation only
-      // ever moves forward.
+      // sitting underneath — going back there after signing in would be
+      // confusing either way (new account or existing one) - moving
+      // forward to Home is correct in both cases.
       router.replace('/tabs/home');
     } finally {
       setGoogleLoading(false);
