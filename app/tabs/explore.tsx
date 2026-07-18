@@ -10,7 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../components/ui/ToastContext';
-import { searchProperties, getSavedPropertyIds, toggleSavedProperty } from '../../lib/api';
+import { searchProperties, subscribeToProperties, getSavedPropertyIds, toggleSavedProperty } from '../../lib/api';
 import { optimizedImageUrl } from '../../lib/cloudinary';
 import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
@@ -94,6 +94,14 @@ export default function ExploreScreen() {
   useEffect(() => {
     const debounce = setTimeout(runSearch, 400);
     return () => clearTimeout(debounce);
+  }, [runSearch]);
+
+  // Real-time — if a property is added, edited, or deactivated while
+  // this screen is open, re-run whatever search/filters are currently
+  // active so results stay live without needing a manual pull-to-refresh.
+  useEffect(() => {
+    const sub = subscribeToProperties(() => { runSearch(); });
+    return () => { sub.unsubscribe(); };
   }, [runSearch]);
 
   const handleToggleSave = async (propertyId: string) => {

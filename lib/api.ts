@@ -76,14 +76,19 @@ export async function getProperty(id: string) {
 }
 
 export async function getFeaturedProperties() {
+  // No hard rating cutoff - a strict floor like 4.8 left almost nothing
+  // to show once real (non-demo) rating data varies, which made the
+  // horizontal scroll look broken since there was rarely more than one
+  // or two qualifying properties to swipe through. Verified + active,
+  // best-rated first, is a better "featured" signal than an arbitrary
+  // threshold that can leave the section nearly empty.
   const { data, error } = await supabase
     .from('properties')
     .select('*')
     .eq('verified', true)
     .eq('active', true)
-    .gte('rating', 4.8)
-    .order('rating', { ascending: false })
-    .limit(6);
+    .order('rating', { ascending: false, nullsFirst: false })
+    .limit(8);
   if (error) throw error;
   return data || [];
 }

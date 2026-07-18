@@ -4,6 +4,8 @@ import {
   TextInput, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
@@ -12,6 +14,7 @@ import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { updateProfile } from '../../lib/api';
+import { uploadToCloudinary } from '../../lib/cloudinary';
 import { Validate } from '../../lib/security';
 
 export default function EditProfileScreen() {
@@ -19,6 +22,8 @@ export default function EditProfileScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
@@ -28,8 +33,40 @@ export default function EditProfileScreen() {
       setEmail(profile.email || user?.email || '');
       const rawPhone = profile.phone || '';
       setPhone(rawPhone.replace(/^\+234/, '').replace(/^0/, ''));
+      setAvatarUrl(profile.avatar_url || null);
     }
   }, [profile, user]);
+
+  const handleChangePhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      toast.error('Permission needed', 'Please allow photo access in your device settings to set a profile picture.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+    if (!user) return;
+
+    setUploadingPhoto(true);
+    try {
+      const hostedUrl = await uploadToCloudinary(result.assets[0].uri);
+      await updateProfile(user.id, { avatar_url: hostedUrl });
+      setAvatarUrl(hostedUrl);
+      toast.success('Photo updated!', 'Your new profile picture is saved.');
+    } catch (e) {
+      console.error('Profile photo upload failed:', e);
+      toast.error('Upload failed', 'Could not update your photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!fullName.trim()) {
@@ -105,14 +142,18 @@ export default function EditProfileScreen() {
           <View style={styles.avatarSection}>
             <View style={styles.avatarWrap}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {(fullName.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2)) || 'GU'}
-                </Text>
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} contentFit="cover" transition={200} />
+                ) : (
+                  <Text style={styles.avatarText}>
+                    {(fullName.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2)) || 'GU'}
+                  </Text>
+                )}
               </View>
             </View>
-            <TouchableOpacity style={styles.changePhotoBtn} onPress={() => toast.info('Coming soon', 'Profile photo uploads will be available in a future update.')}>
-              <Text style={styles.cameraIcon}>📷</Text>
-              <Text style={styles.changePhotoText}>Change Photo</Text>
+            <TouchableOpacity style={styles.changePhotoBtn} onPress={handleChangePhoto} disabled={uploadingPhoto}>
+              <Text style={styles.cameraIcon}>{uploadingPhoto ? '⏳' : '📷'}</Text>
+              <Text style={styles.changePhotoText}>{uploadingPhoto ? 'Uploading…' : 'Change Photo'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -195,7 +236,9 @@ const styles = StyleSheet.create({
   avatar: {
     width: 90, height: 90, borderRadius: 45,
     backgroundColor: '#6B2D82', alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
   },
+  avatarImage: { width: 90, height: 90 },
   avatarText: { fontSize: 32, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#FFFFFF' },
   changePhotoBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { getProfile } from '../lib/api';
 
@@ -6,6 +6,14 @@ export function useAuth() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const refreshProfile = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const fresh = await getProfile(session.user.id).catch(() => null);
+      if (fresh) setProfile(fresh);
+    }
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -28,5 +36,5 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  return { user, profile, loading };
+  return { user, profile, loading, refreshProfile };
 }

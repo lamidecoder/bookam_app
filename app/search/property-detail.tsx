@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Linking, ActivityIndicator,
+  TouchableOpacity, Linking, ActivityIndicator, Dimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -17,6 +17,7 @@ import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButto
 
 const DAY_LABELS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 function buildCalendarGrid(year: number, month: number) {
   const firstDay = new Date(year, month, 1).getDay();
@@ -51,6 +52,13 @@ export default function PropertyDetailScreen() {
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
   const [currentPhoto, setCurrentPhoto] = useState(1);
+  const galleryRef = React.useRef<ScrollView>(null);
+
+  const goToPhoto = (index: number, total: number) => {
+    const clamped = Math.max(0, Math.min(total - 1, index));
+    galleryRef.current?.scrollTo({ x: clamped * SCREEN_WIDTH, animated: true });
+    setCurrentPhoto(clamped + 1);
+  };
 
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -177,6 +185,7 @@ export default function PropertyDetailScreen() {
       params: {
         propertyId,
         propertyName: property.name,
+        propertyImage: property.images?.[0] || '',
         location: property.location,
         checkIn: new Date(selectedCheckIn).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
         checkOut: new Date(selectedCheckOut).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
@@ -217,10 +226,51 @@ export default function PropertyDetailScreen() {
       <StatusBar style="light" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
-        {/* Hero Image */}
+        {/* Hero Image Gallery */}
         <View style={styles.heroImage}>
-          {images[0] ? (
-            <Image source={{ uri: optimizedImageUrl(images[0], 900) }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+          {images.length > 0 ? (
+            <>
+              <ScrollView
+                ref={galleryRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(e) => {
+                  const page = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                  setCurrentPhoto(page + 1);
+                }}
+                style={StyleSheet.absoluteFillObject}
+              >
+                {images.map((img: string, i: number) => (
+                  <Image
+                    key={i}
+                    source={{ uri: optimizedImageUrl(img, 900) }}
+                    style={{ width: SCREEN_WIDTH, height: '100%' }}
+                    contentFit="cover"
+                  />
+                ))}
+              </ScrollView>
+
+              {/* Tap zones — tap the right side to advance, left side to go
+                  back, same pattern as Instagram/Airbnb galleries. Sits
+                  above the ScrollView but below the header buttons below,
+                  and only rendered when there's actually more than one
+                  photo to navigate between. */}
+              {images.length > 1 && (
+                <>
+                  <TouchableOpacity
+                    style={styles.tapZoneLeft}
+                    activeOpacity={1}
+                    onPress={() => goToPhoto(currentPhoto - 2, images.length)}
+                  />
+                  <TouchableOpacity
+                    style={styles.tapZoneRight}
+                    activeOpacity={1}
+                    onPress={() => goToPhoto(currentPhoto, images.length)}
+                  />
+                </>
+              )}
+            </>
           ) : (
             <Text style={styles.heroEmoji}>🛋️</Text>
           )}
@@ -438,6 +488,8 @@ export default function PropertyDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   heroImage: { height: 300, backgroundColor: '#E8E0F0', alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  tapZoneLeft: { position: 'absolute', left: 0, top: 100, bottom: 0, width: '35%', zIndex: 1 },
+  tapZoneRight: { position: 'absolute', right: 0, top: 100, bottom: 0, width: '35%', zIndex: 1 },
   heroEmoji: { fontSize: 80 },
   heroOverlay: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 8 },
   heroBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },

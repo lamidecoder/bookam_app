@@ -8,6 +8,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
+import { Image } from 'expo-image';
 import { useToast } from '../../components/ui/ToastContext';
 import { cancelBooking } from '../../lib/api';
 import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
@@ -105,6 +106,7 @@ export default function BookingDetailActiveScreen() {
 
   const bookingId = params.bookingId as string;
   const propertyName = params.propertyName as string || 'Property';
+  const propertyImage = params.propertyImage as string || '';
   const propertyType = params.propertyType as string || 'Shortlet';
   const location = params.location as string || '';
   const checkIn = params.checkIn as string || '';
@@ -172,7 +174,11 @@ export default function BookingDetailActiveScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Property image */}
         <View style={styles.propertyImage}>
-          <Text style={styles.imagePlaceholder}>🏨</Text>
+          {propertyImage ? (
+            <Image source={{ uri: propertyImage }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+          ) : (
+            <Text style={styles.imagePlaceholder}>🏨</Text>
+          )}
           <View style={styles.verifiedBadge}>
             <Text style={styles.verifiedIcon}>🏅</Text>
             <Text style={styles.verifiedText}>VERIFIED</Text>
@@ -337,7 +343,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 16,
   },
   headerTitle: { fontSize: 17, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#6B2D82' },
-  propertyImage: { height: 220, backgroundColor: '#F0EBF8', alignItems: 'center', justifyContent: 'center' },
+  propertyImage: { height: 220, backgroundColor: '#F0EBF8', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' },
   imagePlaceholder: { fontSize: 64 },
   verifiedBadge: {
     position: 'absolute', top: 16, left: 16,

@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle, Line } from 'react-native-svg';
+import { Image } from 'expo-image';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -79,6 +80,7 @@ export default function BookingSummaryScreen() {
   const booking = {
     propertyId: params.propertyId as string,
     propertyName: params.propertyName as string || 'Property',
+    propertyImage: params.propertyImage as string || '',
     location: params.location as string || '',
     checkIn: params.checkIn as string || '',
     checkOut: params.checkOut as string || '',
@@ -149,6 +151,7 @@ export default function BookingSummaryScreen() {
           bookingId: created.id,
           total: booking.total,
           propertyName: booking.propertyName,
+          propertyImage: booking.propertyImage,
           checkIn: booking.checkIn,
           checkOut: booking.checkOut,
         },
@@ -182,6 +185,14 @@ export default function BookingSummaryScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Property */}
+        {booking.propertyImage ? (
+          <Image
+            source={{ uri: booking.propertyImage }}
+            style={styles.propertyPhoto}
+            contentFit="cover"
+            transition={200}
+          />
+        ) : null}
         <Text style={styles.propertyName}>{booking.propertyName}</Text>
         <View style={styles.locationRow}>
           <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
@@ -310,6 +321,7 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 12, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Poppins-Bold' },
   scroll: { paddingHorizontal: 20, paddingTop: 24 },
+  propertyPhoto: { width: '100%', height: 180, borderRadius: 16, marginBottom: 14, backgroundColor: '#F0EBF8' },
   propertyName: { fontSize: 20, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E', marginBottom: 6 },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
   location: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#9E96A8' },

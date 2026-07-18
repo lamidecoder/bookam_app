@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle, Polygon } from 'react-native-svg';
+import { Image } from 'expo-image';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -44,6 +45,7 @@ export default function BookingDetailReviewScreen() {
   const bookingId = params.bookingId as string;
   const propertyId = params.propertyId as string;
   const propertyName = params.propertyName as string || 'Property';
+  const propertyImage = params.propertyImage as string || '';
   const location = params.location as string || '';
   const nights = Number(params.nights) || 1;
   const total = Number(params.total) || 0;
@@ -113,7 +115,11 @@ export default function BookingDetailReviewScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Property image */}
         <View style={styles.propertyImage}>
-          <Text style={styles.imagePlaceholder}>🏨</Text>
+          {propertyImage ? (
+            <Image source={{ uri: propertyImage }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+          ) : (
+            <Text style={styles.imagePlaceholder}>🏨</Text>
+          )}
           <View style={styles.completedBadge}>
             <View style={styles.completedDot} />
             <Text style={styles.completedText}>Completed</Text>
@@ -209,6 +215,7 @@ const styles = StyleSheet.create({
   propertyImage: {
     height: 220, backgroundColor: '#F0EBF8',
     alignItems: 'center', justifyContent: 'center',
+    position: 'relative', overflow: 'hidden',
   },
   imagePlaceholder: { fontSize: 64 },
   completedBadge: {

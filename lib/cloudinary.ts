@@ -11,7 +11,7 @@
  *    displays whatever URLs are in that array, no further wiring needed here.
  */
 
-const CLOUD_NAME = 'YOUR_CLOUD_NAME'; // <-- replace after creating Cloudinary account
+const CLOUD_NAME = 'rolzokpw';
 const UPLOAD_PRESET = 'bookam_unsigned'; // <-- replace with your unsigned preset name
 
 /**

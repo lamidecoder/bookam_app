@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Image, Linking,
+  ScrollView, Linking,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
@@ -30,7 +31,13 @@ function MenuRow({ icon, label, onPress, danger }: {
 
 export default function ProfileScreen() {
   const toast = useToast();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshProfile();
+    }, [refreshProfile])
+  );
 
   const displayName = profile?.full_name || 'Guest';
   const displayPhone = profile?.phone || 'Not set';
@@ -66,7 +73,11 @@ export default function ProfileScreen() {
         <View style={styles.userCard}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials}</Text>
+              {profile?.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} contentFit="cover" transition={200} />
+              ) : (
+                <Text style={styles.avatarText}>{initials}</Text>
+              )}
             </View>
           </View>
           <View style={styles.userInfo}>
@@ -145,7 +156,9 @@ const styles = StyleSheet.create({
   avatar: {
     width: 60, height: 60, borderRadius: 30,
     backgroundColor: '#6B2D82', alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
   },
+  avatarImage: { width: 60, height: 60 },
   avatarText: { fontSize: 20, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#FFFFFF' },
   userInfo: { flex: 1, gap: 2 },
   userName: { fontSize: 16, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E' },

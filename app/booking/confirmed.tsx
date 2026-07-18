@@ -6,6 +6,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
+import { Image } from 'expo-image';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 
@@ -19,6 +20,7 @@ export default function BookingConfirmedScreen() {
 
   const ref = params.ref as string || `BKM-${Date.now().toString().slice(-8)}`;
   const propertyName = params.propertyName as string || 'Your property';
+  const propertyImage = params.propertyImage as string || '';
   const checkIn = params.checkIn as string || '—';
   const checkOut = params.checkOut as string || '—';
   const total = Number(params.total) || 0;
@@ -87,6 +89,11 @@ export default function BookingConfirmedScreen() {
           },
         ]}
       >
+        {/* Property photo */}
+        {propertyImage ? (
+          <Image source={{ uri: propertyImage }} style={styles.propertyPhoto} contentFit="cover" transition={200} />
+        ) : null}
+
         {/* Property name + verified */}
         <View style={styles.propertyRow}>
           <Text style={styles.propertyName}>{propertyName}</Text>
@@ -186,6 +193,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
     paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32,
   },
+  propertyPhoto: { width: '100%', height: 160, borderRadius: 14, marginBottom: 14, backgroundColor: '#F0EBF8' },
   propertyRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   propertyName: { fontSize: 18, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E' },
   verifiedBadge: {

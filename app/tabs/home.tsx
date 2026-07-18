@@ -4,7 +4,7 @@ import {
   TouchableOpacity, TextInput, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
@@ -86,7 +86,7 @@ function PropertyCard({ item, onPress, isSaved, onToggleSave }: {
 }
 
 export default function HomeScreen() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const toast = useToast();
   const [activeType, setActiveType] = useState('All');
   const [featured, setFeatured] = useState<any[]>([]);
@@ -114,7 +114,7 @@ export default function HomeScreen() {
         getProperties(typeFilter ? { type: typeFilter } : undefined),
       ]);
       if (thisRequestId === requestId.current) {
-        setFeatured(featuredData.slice(0, 2));
+        setFeatured(featuredData);
         setAllProperties(allData);
       }
     } catch (e) {
@@ -147,13 +147,33 @@ export default function HomeScreen() {
   useEffect(() => {
     loadData();
     // Real-time subscription — updates instantly when admin changes data
-    const sub = subscribeToProperties((updated) => {
+    const sub = subscribeToProperties(async (updated) => {
       setAllProperties(updated);
+      // Featured wasn't previously refreshed by this subscription, so a
+      // property newly qualifying as Featured (or an existing one's
+      // rating changing) wouldn't show up on an already-open home
+      // screen until the next pull-to-refresh.
+      try {
+        const featuredData = await getFeaturedProperties();
+        setFeatured(featuredData);
+      } catch {
+        // Non-fatal — the main list above still updated correctly either way.
+      }
     });
     return () => { sub.unsubscribe(); };
   }, [loadData]);
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
+
+  // Picks up profile changes made on another screen (e.g. a new photo
+  // uploaded on Edit Profile) the moment the user navigates back here -
+  // useAuth() doesn't share state across screens, so without this the
+  // avatar shown here would stay stale until the app fully restarted.
+  useFocusEffect(
+    useCallback(() => {
+      refreshProfile();
+    }, [refreshProfile])
+  );
 
   const navigateToProperty = (property: any) => {
     router.push({
@@ -182,7 +202,11 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <BookamLogo width={110} height={34} />
           <TouchableOpacity style={styles.avatar} onPress={() => router.push('/tabs/profile')}>
-            <Text style={styles.avatarText}>{getInitials()}</Text>
+            {profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} contentFit="cover" transition={200} />
+            ) : (
+              <Text style={styles.avatarText}>{getInitials()}</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -319,7 +343,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   scroll: { paddingBottom: 20 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#6B2D82', alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#6B2D82', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarImage: { width: 40, height: 40 },
   avatarText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Poppins-Bold' },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 20, marginBottom: 12 },
   locationText: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#6B6478' },
@@ -334,7 +359,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 17, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E' },
   seeAll: { fontSize: 13, fontFamily: 'Poppins-SemiBold', color: '#6B2D82', fontWeight: '600' },
   featuredScroll: { paddingHorizontal: 20, gap: 14, marginBottom: 24 },
-  featuredCard: { width: 180, borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
+  featuredCard: { width: 165, borderRadius: 16, overflow: 'hidden', backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
   featuredImage: { height: 130, backgroundColor: '#F0EBF8', alignItems: 'center', justifyContent: 'center', position: 'relative' },
   featuredEmoji: { fontSize: 48 },
   featuredInfo: { padding: 12, gap: 3 },

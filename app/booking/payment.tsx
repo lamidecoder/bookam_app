@@ -5,6 +5,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { Image } from 'expo-image';
 import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
@@ -27,6 +28,7 @@ export default function PaymentScreen() {
 
   const total = Number(params.total) || 0;
   const propertyName = params.propertyName as string || 'Property';
+  const propertyImage = params.propertyImage as string || '';
   const bookingId = params.bookingId as string;
 
   const handleProceed = async () => {
@@ -51,6 +53,7 @@ export default function PaymentScreen() {
         pathname: '/booking/confirmed',
         params: {
           propertyName,
+          propertyImage,
           checkIn: params.checkIn,
           checkOut: params.checkOut,
           total,
@@ -80,6 +83,14 @@ export default function PaymentScreen() {
       </View>
 
       <View style={styles.content}>
+        {/* Property reminder */}
+        {propertyImage ? (
+          <View style={styles.propertyReminder}>
+            <Image source={{ uri: propertyImage }} style={styles.propertyThumb} contentFit="cover" transition={200} />
+            <Text style={styles.propertyReminderName} numberOfLines={1}>{propertyName}</Text>
+          </View>
+        ) : null}
+
         {/* Amount */}
         <Text style={styles.amount}>₦{total.toLocaleString()}</Text>
         <Text style={styles.redirect}>
@@ -133,6 +144,9 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E' },
   content: { flex: 1, paddingHorizontal: 24, paddingTop: 40, paddingBottom: 32 },
   amount: { fontSize: 36, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#6B2D82', textAlign: 'center', marginBottom: 12 },
+  propertyReminder: { flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'center', marginBottom: 20, backgroundColor: '#FAF8FC', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12 },
+  propertyThumb: { width: 40, height: 40, borderRadius: 8 },
+  propertyReminderName: { fontSize: 14, fontFamily: 'Poppins-Medium', color: '#1E1E1E', maxWidth: 200 },
   redirect: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#6B6478', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
   paystackCard: {
     backgroundColor: '#FFFFFF', borderRadius: 16,

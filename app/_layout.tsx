@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { NoInternetBanner } from '../components/ui/NoInternetBanner';
 import { router } from 'expo-router';
 import {
   useFonts,
@@ -125,6 +126,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ToastProvider>
         <StatusBar style="dark" />
+        <NoInternetBanner />
         <Stack
           screenOptions={{
             headerShown: false,
