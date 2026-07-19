@@ -53,12 +53,33 @@ export default function PropertyDetailScreen() {
   const [saved, setSaved] = useState(false);
   const [currentPhoto, setCurrentPhoto] = useState(1);
   const galleryRef = React.useRef<ScrollView>(null);
+  const isDraggingRef = React.useRef(false);
 
   const goToPhoto = (index: number, total: number) => {
     const clamped = Math.max(0, Math.min(total - 1, index));
     galleryRef.current?.scrollTo({ x: clamped * SCREEN_WIDTH, animated: true });
     setCurrentPhoto(clamped + 1);
   };
+
+  // Auto-advance the gallery every 4s, wrapping back to the first photo
+  // after the last one. Depends on currentPhoto itself, so ANY change -
+  // whether from this timer firing, a manual swipe, or a manual tap -
+  // restarts the countdown fresh. That's what stops it from fighting
+  // the person actively swiping through photos themselves: a manual
+  // interaction always gets a full new 4s window before auto-advance
+  // would try to move things again, rather than yanking the photo away
+  // mid-look.
+  useEffect(() => {
+    const total = property?.images?.length || 0;
+    if (total <= 1) return;
+    const timer = setTimeout(() => {
+      if (isDraggingRef.current) return; // don't fight an in-progress swipe
+      const nextIndex = currentPhoto % total; // wraps 1..total back to 0
+      galleryRef.current?.scrollTo({ x: nextIndex * SCREEN_WIDTH, animated: true });
+      setCurrentPhoto(nextIndex + 1);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [currentPhoto, property?.images?.length]);
 
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -235,6 +256,8 @@ export default function PropertyDetailScreen() {
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
+                onScrollBeginDrag={() => { isDraggingRef.current = true; }}
+                onScrollEndDrag={() => { isDraggingRef.current = false; }}
                 onMomentumScrollEnd={(e) => {
                   const page = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
                   setCurrentPhoto(page + 1);

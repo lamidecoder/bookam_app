@@ -227,13 +227,20 @@ export default function ExploreScreen() {
             <Text style={styles.emptySub}>Try adjusting your filters or search term.</Text>
           </View>
         ) : (
-          results.map(item => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.resultCard}
-              onPress={() => handleOpenProperty(item)}
-              activeOpacity={0.9}
-            >
+          results.map((item, idx) => {
+            const isFirstNearby = item._nearbyMatch && !results[idx - 1]?._nearbyMatch;
+            return (
+            <React.Fragment key={item.id}>
+              {isFirstNearby && (
+                <View style={styles.nearbyHeader}>
+                  <Text style={styles.nearbyHeaderText}>Also nearby</Text>
+                </View>
+              )}
+              <TouchableOpacity
+                style={styles.resultCard}
+                onPress={() => handleOpenProperty(item)}
+                activeOpacity={0.9}
+              >
               <View style={styles.resultImage}>
                 {item.images?.[0] ? (
                   <Image source={{ uri: optimizedImageUrl(item.images[0], 600) }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
@@ -271,8 +278,10 @@ export default function ExploreScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
-            </TouchableOpacity>
-          ))
+              </TouchableOpacity>
+            </React.Fragment>
+            );
+          })
         )}
 
         <View style={{ height: 120 }} />
@@ -316,6 +325,8 @@ const styles = StyleSheet.create({
   amenityLabelActive: { color: '#FFFFFF' },
   resultsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   resultsCount: { fontSize: 14, fontFamily: 'Poppins-SemiBold', color: '#1E1E1E', fontWeight: '600' },
+  nearbyHeader: { marginTop: 8, marginBottom: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0EBF8' },
+  nearbyHeaderText: { fontSize: 13, fontFamily: 'Poppins-SemiBold', fontWeight: '600', color: '#9E96A8' },
   resultCard: { borderRadius: 16, overflow: 'hidden', marginBottom: 16, backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4 },
   resultImage: { height: 200, backgroundColor: '#F0EBF8', alignItems: 'center', justifyContent: 'center', position: 'relative' },
   resultEmoji: { fontSize: 72 },

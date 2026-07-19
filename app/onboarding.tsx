@@ -44,12 +44,22 @@ export default function OnboardingScreen() {
   const flatRef = useRef<FlatList>(null);
   const splashOpacity = useRef(new Animated.Value(1)).current;
   const slidesOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.85)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
   const TOP = insets.top || (Platform.OS === 'android' ? (RNStatusBar.currentHeight || 24) : 44);
   const BOTTOM = insets.bottom || 0;
   const IMAGE_HEIGHT = height < 700 ? height * 0.38 : height * 0.44;
 
   useEffect(() => {
+    // Logo's own entrance - subtle scale-up-and-fade, not a bounce or
+    // anything showy, matching "clean, not too much". Starts right away
+    // rather than waiting for the splash-to-slides timer below.
+    Animated.parallel([
+      Animated.timing(logoOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 8, useNativeDriver: true }),
+    ]).start();
+
     const timer = setTimeout(() => {
       Animated.parallel([
         Animated.timing(splashOpacity, { toValue: 0, duration: 600, useNativeDriver: true }),
@@ -82,7 +92,11 @@ export default function OnboardingScreen() {
       <StatusBar style="light" />
       {showSplash && (
         <Animated.View style={[styles.splash, { opacity: splashOpacity }]}>
-          <Image source={require('../assets/images/logo.png')} style={styles.splashLogo} resizeMode="contain" />
+          <Animated.Image
+            source={require('../assets/images/logo.png')}
+            style={[styles.splashLogo, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}
+            resizeMode="contain"
+          />
         </Animated.View>
       )}
       <Animated.View style={[styles.slidesWrapper, { opacity: slidesOpacity }]}>

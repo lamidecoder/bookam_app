@@ -98,9 +98,19 @@ export default function EditProfileScreen() {
         if (emailError) throw emailError;
       }
 
+      // Deliberately NOT including email here when it changed - the
+      // profile record should only reflect a confirmed email, not one
+      // still sitting in someone's inbox waiting on a confirmation
+      // click. Writing it immediately here would have made the app
+      // *look* like the change already took effect (in the profile
+      // data, on other screens) even though the actual login
+      // credential hadn't changed yet - exactly backwards from "your
+      // email can't change until you confirm it". useAuth's initial
+      // load re-syncs profiles.email from the real auth email once the
+      // person actually confirms and their session reflects it.
       await updateProfile(user.id, {
         full_name: fullName.trim(),
-        email: email.trim(),
+        ...(emailChanged ? {} : { email: email.trim() }),
         phone: formattedPhone || undefined,
       });
       await supabase.auth.updateUser({ data: { full_name: fullName.trim() } });

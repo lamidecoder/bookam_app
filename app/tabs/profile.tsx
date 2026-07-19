@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/ui/ToastContext';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
 import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
@@ -31,7 +32,7 @@ function MenuRow({ icon, label, onPress, danger }: {
 
 export default function ProfileScreen() {
   const toast = useToast();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, loading } = useAuth();
 
   useFocusEffect(
     useCallback(() => {
@@ -73,7 +74,9 @@ export default function ProfileScreen() {
         <View style={styles.userCard}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatar}>
-              {profile?.avatar_url ? (
+              {loading ? (
+                <Skeleton width={60} height={60} borderRadius={30} />
+              ) : profile?.avatar_url ? (
                 <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} contentFit="cover" transition={200} />
               ) : (
                 <Text style={styles.avatarText}>{initials}</Text>
@@ -81,9 +84,19 @@ export default function ProfileScreen() {
             </View>
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{displayName}</Text>
-            <Text style={styles.userPhone}>{displayPhone}</Text>
-            <Text style={styles.userEmail}>{displayEmail}</Text>
+            {loading ? (
+              <>
+                <Skeleton width={140} height={18} style={{ marginBottom: 6 }} />
+                <Skeleton width={100} height={14} style={{ marginBottom: 6 }} />
+                <Skeleton width={160} height={14} />
+              </>
+            ) : (
+              <>
+                <Text style={styles.userName}>{displayName}</Text>
+                <Text style={styles.userPhone}>{displayPhone}</Text>
+                <Text style={styles.userEmail}>{displayEmail}</Text>
+              </>
+            )}
           </View>
           <TouchableOpacity onPress={() => router.push('/profile/edit-profile')} style={styles.editBtn}>
             <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">

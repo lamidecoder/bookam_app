@@ -9,12 +9,41 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { BookamLogo } from '../../components/ui/BookamLogo';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../components/ui/ToastContext';
-import { getProperties, getFeaturedProperties, subscribeToProperties, getSavedPropertyIds, toggleSavedProperty } from '../../lib/api';
+import {
+  getProperties, getFeaturedProperties, subscribeToProperties,
+  getSavedPropertyIds, toggleSavedProperty,
+  getUnreadNotificationCount, generateCheckinReminders,
+} from '../../lib/api';
 import { optimizedImageUrl } from '../../lib/cloudinary';
 
 const PROPERTY_TYPES = ['All', 'Hotels', 'Shortlets', 'Event Centers'];
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+// Rotates each property's own images array so a randomly-picked photo
+// becomes index 0 - once per load, not a continuous auto-cycle while
+// the card is on screen (that would be visually busy). Since every
+// card/detail screen already just reads images[0] as the main photo,
+// reordering the array itself means no other code needs to change.
+function withRandomizedMainImage<T extends { images?: string[] }>(properties: T[]): T[] {
+  return properties.map((p) => {
+    if (!p.images || p.images.length <= 1) return p;
+    const pick = Math.floor(Math.random() * p.images.length);
+    if (pick === 0) return p;
+    const reordered = [p.images[pick], ...p.images.slice(0, pick), ...p.images.slice(pick + 1)];
+    return { ...p, images: reordered };
+  });
+}
 
 function VerifiedBadge() {
   return (
@@ -86,7 +115,7 @@ function PropertyCard({ item, onPress, isSaved, onToggleSave }: {
 }
 
 export default function HomeScreen() {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, loading: authLoading } = useAuth();
   const toast = useToast();
   const [activeType, setActiveType] = useState('All');
   const [featured, setFeatured] = useState<any[]>([]);
@@ -94,6 +123,7 @@ export default function HomeScreen() {
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const [error, setError] = useState(false);
   const requestId = React.useRef(0);
@@ -114,8 +144,8 @@ export default function HomeScreen() {
         getProperties(typeFilter ? { type: typeFilter } : undefined),
       ]);
       if (thisRequestId === requestId.current) {
-        setFeatured(featuredData);
-        setAllProperties(allData);
+        setFeatured(shuffleArray(withRandomizedMainImage(featuredData)));
+        setAllProperties(shuffleArray(withRandomizedMainImage(allData)));
       }
     } catch (e) {
       console.error('Load error:', e);
@@ -146,22 +176,32 @@ export default function HomeScreen() {
 
   useEffect(() => {
     loadData();
+    if (user) {
+      getUnreadNotificationCount(user.id).then(setUnreadCount).catch(() => {});
+      generateCheckinReminders(user.id).catch(() => {});
+    }
     // Real-time subscription — updates instantly when admin changes data
     const sub = subscribeToProperties(async (updated) => {
-      setAllProperties(updated);
+      // Randomized main image is fine to reapply here (just picks a
+      // different valid photo), but deliberately NOT re-shuffling list
+      // order on every real-time update - that fires often, and
+      // reordering the whole list under someone actively scrolling
+      // would be disorienting. Order only reshuffles on a deliberate
+      // load: initial open or pull-to-refresh, via loadData() above.
+      setAllProperties(withRandomizedMainImage(updated));
       // Featured wasn't previously refreshed by this subscription, so a
       // property newly qualifying as Featured (or an existing one's
       // rating changing) wouldn't show up on an already-open home
       // screen until the next pull-to-refresh.
       try {
         const featuredData = await getFeaturedProperties();
-        setFeatured(featuredData);
+        setFeatured(withRandomizedMainImage(featuredData));
       } catch {
         // Non-fatal — the main list above still updated correctly either way.
       }
     });
     return () => { sub.unsubscribe(); };
-  }, [loadData]);
+  }, [loadData, user]);
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
@@ -172,7 +212,8 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       refreshProfile();
-    }, [refreshProfile])
+      if (user) getUnreadNotificationCount(user.id).then(setUnreadCount).catch(() => {});
+    }, [refreshProfile, user])
   );
 
   const navigateToProperty = (property: any) => {
@@ -201,13 +242,28 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <BookamLogo width={110} height={34} />
-          <TouchableOpacity style={styles.avatar} onPress={() => router.push('/tabs/profile')}>
-            {profile?.avatar_url ? (
-              <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} contentFit="cover" transition={200} />
-            ) : (
-              <Text style={styles.avatarText}>{getInitials()}</Text>
-            )}
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.bellBtn} onPress={() => router.push('/notifications')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                <Path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#1E1E1E" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                <Path d="M13.73 21a2 2 0 01-3.46 0" stroke="#1E1E1E" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+              {unreadCount > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.avatar} onPress={() => router.push('/tabs/profile')} disabled={authLoading}>
+              {authLoading ? (
+                <Skeleton width={40} height={40} borderRadius={20} />
+              ) : profile?.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} contentFit="cover" transition={200} />
+              ) : (
+                <Text style={styles.avatarText}>{getInitials()}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Location */}
@@ -343,6 +399,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   scroll: { paddingBottom: 20 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  bellBtn: { position: 'relative' },
+  bellBadge: { position: 'absolute', top: -4, right: -6, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#D94F4F', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3, borderWidth: 1.5, borderColor: '#FFFFFF' },
+  bellBadgeText: { fontSize: 9, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Poppins-Bold' },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#6B2D82', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarImage: { width: 40, height: 40 },
   avatarText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Poppins-Bold' },

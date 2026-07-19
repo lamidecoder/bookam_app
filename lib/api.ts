@@ -3,6 +3,41 @@ import { supabase } from './supabase';
 // ============================================
 // PROPERTIES
 // ============================================
+// Curated nearby-area groupings for Lagos - there's no lat/lng geo data
+// on properties (just text area/location fields), so true
+// distance-based search isn't available without much bigger
+// infrastructure (geocoding every property, a spatial index, etc).
+// This is the achievable, still genuinely useful version: if searching
+// a specific area comes back sparse, also surface properties from
+// areas people would actually consider "nearby" in real life, instead
+// of just showing an empty result.
+const LAGOS_NEARBY_AREAS: Record<string, string[]> = {
+  'lekki': ['ajah', 'victoria island', 'ikoyi', 'chevron', 'osapa', 'agungi'],
+  'ajah': ['lekki', 'sangotedo', 'chevron'],
+  'victoria island': ['ikoyi', 'lekki', 'obalende'],
+  'ikoyi': ['victoria island', 'obalende', 'lekki'],
+  'ikeja': ['gra', 'opebi', 'allen', 'magodo', 'ogba'],
+  'magodo': ['ikeja', 'ogba', 'ojodu'],
+  'yaba': ['surulere', 'ebute metta', 'gbagada'],
+  'surulere': ['yaba', 'lawanson', 'ijesha'],
+  'gbagada': ['yaba', 'ketu', 'anthony'],
+  'ajao estate': ['isolo', 'oshodi', 'mafoluku'],
+  'festac': ['amuwo odofin', 'satellite town'],
+};
+
+function findNearbyAreas(query: string): string[] {
+  const key = query.trim().toLowerCase();
+  if (LAGOS_NEARBY_AREAS[key]) return LAGOS_NEARBY_AREAS[key];
+  // Also check if the query matches as a nearby area of some other
+  // area - e.g. searching "Ajah" should also catch "Lekki" since
+  // they're mutually nearby, even though Ajah isn't its own top-level
+  // key pointing back to itself.
+  for (const [area, nearby] of Object.entries(LAGOS_NEARBY_AREAS)) {
+    if (nearby.includes(key)) return [area, ...nearby.filter((a) => a !== key)];
+  }
+  return [];
+}
+
 export async function searchProperties(filters: {
   query?: string;
   type?: string;
@@ -27,7 +62,38 @@ export async function searchProperties(filters: {
 
   const { data, error } = await q;
   if (error) throw error;
-  return data || [];
+  const exactResults = data || [];
+
+  // Only reach for nearby-area fallback when there's an actual location
+  // query with genuinely sparse results (<3) - not on every search,
+  // and not when other filters (type/amenities/price) already narrowed
+  // things down on purpose.
+  const queryText = filters.query?.trim();
+  if (queryText && exactResults.length < 3 && !filters.areas?.length) {
+    const nearby = findNearbyAreas(queryText);
+    if (nearby.length > 0) {
+      const excludeIds = exactResults.map((p) => p.id);
+      let nearbyQuery = supabase
+        .from('properties')
+        .select('*')
+        .eq('active', true)
+        .in('area', nearby)
+        .order('rating', { ascending: false })
+        .limit(10);
+      if (excludeIds.length > 0) {
+        nearbyQuery = nearbyQuery.not('id', 'in', `(${excludeIds.join(',')})`);
+      }
+      const { data: nearbyData } = await nearbyQuery;
+      if (nearbyData?.length) {
+        // Tagged distinctly so the UI can show these under their own
+        // "Also nearby" heading instead of silently mixing them in
+        // with genuine exact matches.
+        return [...exactResults, ...nearbyData.map((p) => ({ ...p, _nearbyMatch: true }))];
+      }
+    }
+  }
+
+  return exactResults;
 }
 
 export async function getProperties(filters?: {
@@ -150,10 +216,126 @@ export async function confirmBooking(bookingId: string, paystackRef: string) {
     .from('bookings')
     .update({ status: 'confirmed', paystack_ref: paystackRef, payment_ref: `BKM-${Date.now()}` })
     .eq('id', bookingId)
-    .select()
+    .select('*, properties(name), profiles(full_name)')
     .single();
   if (error) throw error;
+
+  // Personalized in-app notification - first name where we have one,
+  // the actual property and date rather than a generic "your booking
+  // is confirmed" blast. Failure here should never block the booking
+  // itself from succeeding, so it's deliberately non-fatal.
+  const firstName = data.profiles?.full_name?.split(' ')[0];
+  await createNotification({
+    userId: data.user_id,
+    title: firstName ? `You're all set, ${firstName}!` : "You're all set!",
+    body: `Your stay at ${data.properties?.name ?? 'your property'} is confirmed for ${new Date(data.check_in).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}.`,
+    type: 'booking_confirmed',
+    relatedBookingId: bookingId,
+  }).catch((e) => console.warn('Could not create booking-confirmed notification:', e));
+
   return data;
+}
+
+export type AppNotification = {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string;
+  type: string;
+  related_booking_id: string | null;
+  read: boolean;
+  created_at: string;
+};
+
+export async function createNotification(params: {
+  userId: string;
+  title: string;
+  body: string;
+  type?: string;
+  relatedBookingId?: string;
+}) {
+  const { error } = await supabase.from('notifications').insert({
+    user_id: params.userId,
+    title: params.title,
+    body: params.body,
+    type: params.type ?? 'general',
+    related_booking_id: params.relatedBookingId ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function getNotifications(userId: string): Promise<AppNotification[]> {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getUnreadNotificationCount(userId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('read', false);
+  if (error) throw error;
+  return count || 0;
+}
+
+export async function markNotificationRead(id: string) {
+  const { error } = await supabase.from('notifications').update({ read: true }).eq('id', id);
+  if (error) throw error;
+}
+
+export async function markAllNotificationsRead(userId: string) {
+  const { error } = await supabase.from('notifications').update({ read: true }).eq('user_id', userId).eq('read', false);
+  if (error) throw error;
+}
+
+/**
+ * Generates a personalized check-in reminder for any of the person's
+ * upcoming bookings checking in tomorrow - called once when the app
+ * opens (see app/tabs/home.tsx). No backend cron/scheduled-function
+ * infrastructure exists in this project, so rather than requiring that
+ * bigger lift, this checks on natural app opens instead: genuinely
+ * good enough, since a guest checking in tomorrow is very likely to
+ * open the app at some point today anyway. Safely skips creating a
+ * duplicate if a reminder for that specific booking already exists.
+ */
+export async function generateCheckinReminders(userId: string) {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+  const { data: bookings, error } = await supabase
+    .from('bookings')
+    .select('id, check_in, properties(name), profiles(full_name)')
+    .eq('user_id', userId)
+    .eq('status', 'confirmed')
+    .eq('check_in', tomorrowStr);
+  if (error || !bookings?.length) return;
+
+  for (const booking of bookings) {
+    const { data: existing } = await supabase
+      .from('notifications')
+      .select('id')
+      .eq('related_booking_id', booking.id)
+      .eq('type', 'checkin_reminder')
+      .maybeSingle();
+    if (existing) continue; // already sent, don't duplicate
+
+    const firstName = (booking as any).profiles?.full_name?.split(' ')[0];
+    await createNotification({
+      userId,
+      title: firstName ? `See you tomorrow, ${firstName}!` : 'Check-in tomorrow!',
+      body: `Your stay at ${(booking as any).properties?.name ?? 'your property'} begins tomorrow. Safe travels!`,
+      type: 'checkin_reminder',
+      relatedBookingId: booking.id,
+    }).catch(() => {});
+  }
 }
 
 export async function cancelBooking(bookingId: string) {
