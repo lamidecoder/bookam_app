@@ -54,6 +54,15 @@ export default function CancellationPolicyScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Text style={styles.breadcrumb}>SUPPORT › POLICIES</Text>
         <Text style={styles.title}>What is the cancellation policy?</Text>
+
+        <View style={styles.heroImage}>
+          <Text style={styles.heroEmoji}>📋</Text>
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeIcon}>🛡️</Text>
+            <Text style={styles.heroBadgeText}>Fair for guests and hosts</Text>
+          </View>
+        </View>
+
         <Text style={styles.body}>
           At Bookam, we strive to provide a fair experience for both our guests and property hosts. Our standard cancellation policy is tiered based on the time remaining until your scheduled check-in:
         </Text>
@@ -113,6 +122,11 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 },
   breadcrumb: { fontSize: 11, fontFamily: 'Poppins-Medium', color: '#9E96A8', letterSpacing: 0.5, marginBottom: 10 },
   title: { fontSize: 24, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E', marginBottom: 16, lineHeight: 32 },
+  heroImage: { height: 160, backgroundColor: '#2D1B33', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 20, position: 'relative', overflow: 'hidden' },
+  heroEmoji: { fontSize: 56 },
+  heroBadge: { position: 'absolute', bottom: 14, left: 16, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  heroBadgeIcon: { fontSize: 16 },
+  heroBadgeText: { fontSize: 14, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#FFFFFF' },
   body: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#6B6478', lineHeight: 22, marginBottom: 24 },
   refundCards: { gap: 12, marginBottom: 20 },
   refundCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, padding: 16, gap: 14, overflow: 'hidden' },

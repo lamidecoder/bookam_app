@@ -23,6 +23,15 @@ export default function PaymentMethodsScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Payment methods available</Text>
+
+        <View style={styles.heroImage}>
+          <Text style={styles.heroEmoji}>💳</Text>
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeIcon}>🔒</Text>
+            <Text style={styles.heroBadgeText}>Secured by Paystack</Text>
+          </View>
+        </View>
+
         <Text style={styles.body}>Learn more about how we process your payments securely on our platform.</Text>
 
         {/* Secure Payments banner */}
@@ -114,6 +123,11 @@ const styles = StyleSheet.create({
   closeBtn: { fontSize: 18, color: '#1E1E1E', padding: 4 },
   scroll: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 },
   title: { fontSize: 26, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E', lineHeight: 34, marginBottom: 10 },
+  heroImage: { height: 160, backgroundColor: '#2D1B33', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 20, position: 'relative', overflow: 'hidden' },
+  heroEmoji: { fontSize: 56 },
+  heroBadge: { position: 'absolute', bottom: 14, left: 16, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  heroBadgeIcon: { fontSize: 16 },
+  heroBadgeText: { fontSize: 14, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#FFFFFF' },
   body: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#6B6478', lineHeight: 22, marginBottom: 20 },
   secureBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: '#F0FDF6', borderRadius: 12, padding: 16, marginBottom: 24, overflow: 'hidden' },
   secureBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#2E9E6B' },

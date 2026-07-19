@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { Image } from 'expo-image';
+import * as Haptics from 'expo-haptics';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 
@@ -26,6 +27,10 @@ export default function BookingConfirmedScreen() {
   const total = Number(params.total) || 0;
 
   useEffect(() => {
+    // A real booking just completed - the single biggest success
+    // moment in the app, worth its own stronger haptic rather than
+    // relying on whatever toast happens to fire around the same time.
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     // Entrance animations
     Animated.sequence([
       Animated.spring(scaleAnim, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }),

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import * as Haptics from 'expo-haptics';
 import { Toast, ToastType } from './Toast';
 
 type ToastData = {
@@ -27,6 +28,27 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const showToast = useCallback((data: ToastData) => {
     if (timerRef.current) clearTimeout(timerRef.current);
     setToast({ ...data, visible: true });
+
+    // expo-haptics was installed but never actually wired up anywhere -
+    // matching the feedback to what already happens visually costs
+    // nothing extra to call at every existing toast site, since they
+    // all already flow through here.
+    switch (data.type) {
+      case 'success':
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        break;
+      case 'error':
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+        break;
+      case 'warning':
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+        break;
+      default:
+        // 'info' toasts are frequent and often minor - a light tap
+        // rather than a full notification-style buzz, so it doesn't
+        // get tiresome on repeated small confirmations.
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
   }, []);
 
   const dismiss = useCallback(() => {

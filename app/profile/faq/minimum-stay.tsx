@@ -28,6 +28,14 @@ export default function MinimumStayScreen() {
         <Text style={styles.title}>How does the minimum stay work?</Text>
         <View style={styles.titleUnderline} />
 
+        <View style={styles.heroImage}>
+          <Text style={styles.heroEmoji}>🗓️</Text>
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeIcon}>🌙</Text>
+            <Text style={styles.heroBadgeText}>Set per property</Text>
+          </View>
+        </View>
+
         <View style={styles.card}>
           <Text style={styles.cardBody}>
             Minimum stay requirements are specifically determined by our property owners to ensure operational efficiency and quality service for every guest.
@@ -104,6 +112,11 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#6B2D82' },
   scroll: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 },
   title: { fontSize: 24, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E', lineHeight: 32, marginBottom: 8 },
+  heroImage: { height: 160, backgroundColor: '#2D1B33', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 20, position: 'relative', overflow: 'hidden' },
+  heroEmoji: { fontSize: 56 },
+  heroBadge: { position: 'absolute', bottom: 14, left: 16, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  heroBadgeIcon: { fontSize: 16 },
+  heroBadgeText: { fontSize: 14, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#FFFFFF' },
   titleUnderline: { width: 48, height: 3, backgroundColor: '#6B2D82', borderRadius: 2, marginBottom: 20 },
   card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: '#F0EBF8', gap: 16 },
   cardBody: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#6B6478', lineHeight: 22 },

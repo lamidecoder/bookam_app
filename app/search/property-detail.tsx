@@ -4,6 +4,7 @@ import {
   TouchableOpacity, Linking, ActivityIndicator, Dimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
+import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -176,6 +177,7 @@ export default function PropertyDetailScreen() {
 
   const handleToggleSave = async () => {
     if (!user) { router.push('/auth/login'); return; }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     try {
       const nowSaved = await toggleSavedProperty(user.id, propertyId);
       setSaved(nowSaved);

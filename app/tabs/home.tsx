@@ -4,6 +4,7 @@ import {
   TouchableOpacity, TextInput, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
+import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -165,6 +166,7 @@ export default function HomeScreen() {
       router.push('/auth/login');
       return;
     }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     try {
       const nowSaved = await toggleSavedProperty(user.id, propertyId);
       setSavedIds(prev => nowSaved ? [...prev, propertyId] : prev.filter(id => id !== propertyId));
