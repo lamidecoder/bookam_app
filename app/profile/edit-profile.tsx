@@ -4,26 +4,25 @@ import {
   TextInput, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { Avatar, AVATAR_COLORS } from '../../components/ui/Avatar';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { updateProfile } from '../../lib/api';
-import { uploadToCloudinary } from '../../lib/cloudinary';
 import { Validate } from '../../lib/security';
 
 export default function EditProfileScreen() {
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
+  const [savingColor, setSavingColor] = useState(false);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
@@ -33,38 +32,22 @@ export default function EditProfileScreen() {
       setEmail(profile.email || user?.email || '');
       const rawPhone = profile.phone || '';
       setPhone(rawPhone.replace(/^\+234/, '').replace(/^0/, ''));
-      setAvatarUrl(profile.avatar_url || null);
+      setAvatarColor(profile.avatar_color || AVATAR_COLORS[0]);
     }
   }, [profile, user]);
 
-  const handleChangePhoto = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      toast.error('Permission needed', 'Please allow photo access in your device settings to set a profile picture.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (result.canceled || !result.assets?.[0]) return;
-    if (!user) return;
-
-    setUploadingPhoto(true);
+  const handlePickColor = async (color: string) => {
+    if (!user || color === avatarColor) return;
+    const previous = avatarColor;
+    setAvatarColor(color); // instant, optimistic
+    setSavingColor(true);
     try {
-      const hostedUrl = await uploadToCloudinary(result.assets[0].uri);
-      await updateProfile(user.id, { avatar_url: hostedUrl });
-      setAvatarUrl(hostedUrl);
-      toast.success('Photo updated!', 'Your new profile picture is saved.');
+      await updateProfile(user.id, { avatar_color: color });
     } catch (e) {
-      console.error('Profile photo upload failed:', e);
-      toast.error('Upload failed', 'Could not update your photo. Please try again.');
+      setAvatarColor(previous);
+      toast.error('Could not save', 'Please try again.');
     } finally {
-      setUploadingPhoto(false);
+      setSavingColor(false);
     }
   };
 
@@ -150,21 +133,32 @@ export default function EditProfileScreen() {
 
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.avatarSection}>
-            <View style={styles.avatarWrap}>
-              <View style={styles.avatar}>
-                {avatarUrl ? (
-                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} contentFit="cover" transition={200} />
-                ) : (
-                  <Text style={styles.avatarText}>
-                    {(fullName.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2)) || 'GU'}
-                  </Text>
-                )}
-              </View>
+            {authLoading ? (
+              <Skeleton width={90} height={90} borderRadius={45} />
+            ) : (
+              <Avatar name={fullName} color={avatarColor} size={90} />
+            )}
+            <Text style={styles.colorPickerLabel}>Choose your color</Text>
+            <View style={styles.colorGrid}>
+              {AVATAR_COLORS.map((c) => (
+                <TouchableOpacity
+                  key={c}
+                  onPress={() => handlePickColor(c)}
+                  disabled={savingColor}
+                  style={[
+                    styles.colorSwatch,
+                    { backgroundColor: c },
+                    c === avatarColor && styles.colorSwatchSelected,
+                  ]}
+                >
+                  {c === avatarColor && (
+                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                      <Path d="M20 6L9 17l-5-5" stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+                    </Svg>
+                  )}
+                </TouchableOpacity>
+              ))}
             </View>
-            <TouchableOpacity style={styles.changePhotoBtn} onPress={handleChangePhoto} disabled={uploadingPhoto}>
-              <Text style={styles.cameraIcon}>{uploadingPhoto ? '⏳' : '📷'}</Text>
-              <Text style={styles.changePhotoText}>{uploadingPhoto ? 'Uploading…' : 'Change Photo'}</Text>
-            </TouchableOpacity>
           </View>
 
           <View style={styles.form}>
@@ -238,25 +232,14 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E' },
   scroll: { paddingHorizontal: 24, paddingBottom: 40 },
   avatarSection: { alignItems: 'center', paddingTop: 28, paddingBottom: 32, gap: 14 },
-  avatarWrap: {
-    width: 100, height: 100, borderRadius: 50,
-    borderWidth: 2.5, borderColor: '#C9A84C',
+  colorPickerLabel: { fontSize: 13, fontFamily: 'Poppins-Medium', fontWeight: '500', color: '#9E96A8', marginTop: 4 },
+  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, paddingHorizontal: 32 },
+  colorSwatch: {
+    width: 40, height: 40, borderRadius: 20,
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: 'transparent',
   },
-  avatar: {
-    width: 90, height: 90, borderRadius: 45,
-    backgroundColor: '#6B2D82', alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarImage: { width: 90, height: 90 },
-  avatarText: { fontSize: 32, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#FFFFFF' },
-  changePhotoBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#6B2D82', borderRadius: 40,
-    paddingHorizontal: 20, paddingVertical: 10,
-  },
-  cameraIcon: { fontSize: 16 },
-  changePhotoText: { fontSize: 14, fontFamily: 'Poppins-SemiBold', color: '#FFFFFF', fontWeight: '600' },
+  colorSwatchSelected: { borderColor: '#1E1E1E' },
   form: { gap: 6, marginBottom: 32 },
   fieldLabel: {
     fontSize: 14, fontFamily: 'Poppins-SemiBold', fontWeight: '600',

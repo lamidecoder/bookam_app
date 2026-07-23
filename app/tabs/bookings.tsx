@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Linking, ActivityIndicator, RefreshControl,
+  TouchableOpacity, Linking, ActivityIndicator, RefreshControl, Animated,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { BookamLogo } from '../../components/ui/BookamLogo';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
-import { getUserBookings, subscribeToBookings } from '../../lib/api';
-import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
+import { getUserBookings, subscribeToBookings, getUnreadNotificationCount } from '../../lib/api';
 
 type BookingStatus = 'confirmed' | 'completed' | 'cancelled' | 'pending';
 
@@ -21,6 +21,19 @@ const STATUS_CONFIG = {
   pending: { label: 'Pending', bg: '#FFFBEB', text: '#E8922A' },
 };
 
+function BookingCardSkeleton() {
+  return (
+    <View style={styles.card}>
+      <Skeleton width="100%" height={160} borderRadius={0} />
+      <View style={styles.cardInfo}>
+        <Skeleton width="65%" height={16} style={{ marginBottom: 8 }} />
+        <Skeleton width="45%" height={12} style={{ marginBottom: 10 }} />
+        <Skeleton width="80%" height={12} />
+      </View>
+    </View>
+  );
+}
+
 export default function BookingsScreen() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
@@ -28,6 +41,8 @@ export default function BookingsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const contentFade = useRef(new Animated.Value(0)).current;
 
   const loadBookings = async () => {
     if (!user) {
@@ -53,6 +68,19 @@ export default function BookingsScreen() {
     return () => { sub.unsubscribe(); };
   }, [user]);
 
+  useEffect(() => {
+    if (user) getUnreadNotificationCount(user.id).then(setUnreadCount).catch(() => {});
+  }, [user]);
+
+  // Fades content in smoothly once loading resolves, instead of it
+  // just abruptly appearing.
+  useEffect(() => {
+    if (!loading) {
+      contentFade.setValue(0);
+      Animated.timing(contentFade, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    }
+  }, [loading]);
+
   const upcoming = bookings.filter(b => ['confirmed', 'pending'].includes(b.status));
   const past = bookings.filter(b => ['completed', 'cancelled'].includes(b.status));
   const list = activeTab === 'upcoming' ? upcoming : past;
@@ -67,15 +95,20 @@ export default function BookingsScreen() {
       <View style={styles.header}>
         <BookamLogo width={110} height={34} />
         <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/profile/saved-properties')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
               <Path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke="#1E1E1E" strokeWidth={1.8} />
             </Svg>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/notifications')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
               <Path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="#1E1E1E" strokeWidth={1.8} strokeLinecap="round" />
             </Svg>
+            {unreadCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -99,7 +132,11 @@ export default function BookingsScreen() {
         </View>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#6B2D82" style={{ marginTop: 60 }} />
+          <View style={styles.cards}>
+            <BookingCardSkeleton />
+            <BookingCardSkeleton />
+            <BookingCardSkeleton />
+          </View>
         ) : !user ? (
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>🔒</Text>
@@ -132,7 +169,7 @@ export default function BookingsScreen() {
             )}
           </View>
         ) : (
-          <View style={styles.cards}>
+          <Animated.View style={[styles.cards, { opacity: contentFade }]}>
             {list.map(booking => {
               const status = booking.status as BookingStatus;
               const cfg = STATUS_CONFIG[status];
@@ -242,13 +279,11 @@ export default function BookingsScreen() {
                 </TouchableOpacity>
               );
             })}
-          </View>
+          </Animated.View>
         )}
 
         <View style={{ height: 120 }} />
       </ScrollView>
-
-      <FloatingSupportButtons />
     </SafeAreaView>
   );
 }
@@ -257,7 +292,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAFA' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },
   headerIcons: { flexDirection: 'row', gap: 8 },
-  iconBtn: { padding: 6 },
+  iconBtn: { padding: 6, position: 'relative' },
+  bellBadge: { position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#D94F4F', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3, borderWidth: 1.5, borderColor: '#FAFAFA' },
+  bellBadgeText: { fontSize: 9, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Poppins-Bold' },
   scroll: { paddingHorizontal: 20, paddingBottom: 120 },
   pageTitle: { fontSize: 24, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#6B2D82', marginBottom: 16 },
   tabs: { flexDirection: 'row', backgroundColor: '#F0EBF8', borderRadius: 40, padding: 4, marginBottom: 20 },
@@ -294,8 +331,4 @@ const styles = StyleSheet.create({
   emptySub: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#9E96A8', textAlign: 'center' },
   exploreBtn: { marginTop: 12, backgroundColor: '#6B2D82', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
   exploreBtnText: { fontSize: 14, fontFamily: 'Poppins-SemiBold', color: '#FFFFFF', fontWeight: '600' },
-  floatingBtns: { position: 'absolute', bottom: 100, right: 20, gap: 12 },
-  whatsappBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#25D366', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 },
-  callBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#6B2D82', alignItems: 'center', justifyContent: 'center', shadowColor: '#6B2D82', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 6 },
-  floatingIcon: { fontSize: 22 },
 });

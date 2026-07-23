@@ -13,7 +13,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../components/ui/ToastContext';
 import { searchProperties, subscribeToProperties, getSavedPropertyIds, toggleSavedProperty } from '../../lib/api';
 import { optimizedImageUrl } from '../../lib/cloudinary';
-import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
 const PROPERTY_TYPES = ['All', 'Hotels', 'Shortlets', 'Event Centers'];
 const AREAS = ['Lekki Phase 1', 'Ikoyi', 'Ikeja', 'Ajah', 'Victoria Island', 'Magodo', 'Surulere', 'Banana Island'];
@@ -289,7 +288,6 @@ export default function ExploreScreen() {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      <FloatingSupportButtons />
     </SafeAreaView>
   );
 }

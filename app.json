@@ -66,15 +66,7 @@
       "expo-web-browser",
       "expo-secure-store",
       "expo-font",
-      "expo-asset",
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Allow Bookam to access your photos so you can set a profile picture.",
-          "cameraPermission": false,
-          "microphonePermission": false
-        }
-      ]
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

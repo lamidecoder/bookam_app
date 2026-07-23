@@ -216,22 +216,40 @@ export async function confirmBooking(bookingId: string, paystackRef: string) {
     .from('bookings')
     .update({ status: 'confirmed', paystack_ref: paystackRef, payment_ref: `BKM-${Date.now()}` })
     .eq('id', bookingId)
-    .select('*, properties(name), profiles(full_name)')
+    .select('*, properties(name)')
     .single();
   if (error) throw error;
 
-  // Personalized in-app notification - first name where we have one,
-  // the actual property and date rather than a generic "your booking
-  // is confirmed" blast. Failure here should never block the booking
-  // itself from succeeding, so it's deliberately non-fatal.
-  const firstName = data.profiles?.full_name?.split(' ')[0];
-  await createNotification({
-    userId: data.user_id,
-    title: firstName ? `You're all set, ${firstName}!` : "You're all set!",
-    body: `Your stay at ${data.properties?.name ?? 'your property'} is confirmed for ${new Date(data.check_in).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}.`,
-    type: 'booking_confirmed',
-    relatedBookingId: bookingId,
-  }).catch((e) => console.warn('Could not create booking-confirmed notification:', e));
+  // Personalized in-app notification - entirely wrapped so nothing in
+  // here can ever block the booking confirmation itself from
+  // succeeding, regardless of what goes wrong inside it. Deliberately
+  // NOT using an embedded profiles(...) join in the query above -
+  // bookings.user_id references auth.users, not profiles directly, so
+  // PostgREST has no foreign key path to auto-embed through.
+  try {
+    const { data: guestProfile } = await supabase
+      .from('profiles')
+      .select('full_name, notification_preferences')
+      .eq('id', data.user_id)
+      .maybeSingle();
+
+    // Respects the guest's own notification preferences - only create
+    // this if they haven't turned booking-update notifications off.
+    // Defaults to true (sent) if the preference was never explicitly set.
+    const wantsBookingUpdates = guestProfile?.notification_preferences?.booking_updates !== false;
+    if (wantsBookingUpdates) {
+      const firstName = guestProfile?.full_name?.split(' ')[0];
+      await createNotification({
+        userId: data.user_id,
+        title: firstName ? `You're all set, ${firstName}!` : "You're all set!",
+        body: `Your stay at ${data.properties?.name ?? 'your property'} is confirmed for ${new Date(data.check_in).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}.`,
+        type: 'booking_confirmed',
+        relatedBookingId: bookingId,
+      });
+    }
+  } catch (e) {
+    console.warn('Could not create booking-confirmed notification:', e);
+  }
 
   return data;
 }
@@ -312,11 +330,25 @@ export async function generateCheckinReminders(userId: string) {
 
   const { data: bookings, error } = await supabase
     .from('bookings')
-    .select('id, check_in, properties(name), profiles(full_name)')
+    .select('id, check_in, properties(name)')
     .eq('user_id', userId)
     .eq('status', 'confirmed')
     .eq('check_in', tomorrowStr);
   if (error || !bookings?.length) return;
+
+  // Fetched once here rather than per-booking - same safe pattern as
+  // confirmBooking, deliberately not an embedded profiles(...) join.
+  const { data: guestProfile } = await supabase
+    .from('profiles')
+    .select('full_name, notification_preferences')
+    .eq('id', userId)
+    .maybeSingle();
+
+  // Respects the guest's own preference - skip entirely if they've
+  // turned check-in reminders off.
+  if (guestProfile?.notification_preferences?.checkin_reminders === false) return;
+
+  const firstName = guestProfile?.full_name?.split(' ')[0];
 
   for (const booking of bookings) {
     const { data: existing } = await supabase
@@ -327,7 +359,6 @@ export async function generateCheckinReminders(userId: string) {
       .maybeSingle();
     if (existing) continue; // already sent, don't duplicate
 
-    const firstName = (booking as any).profiles?.full_name?.split(' ')[0];
     await createNotification({
       userId,
       title: firstName ? `See you tomorrow, ${firstName}!` : 'Check-in tomorrow!',
@@ -472,6 +503,8 @@ export async function updateProfile(userId: string, updates: {
   email?: string;
   phone?: string;
   avatar_url?: string;
+  avatar_color?: string;
+  notification_preferences?: { booking_updates?: boolean; checkin_reminders?: boolean; promotions?: boolean };
 }) {
   const { data, error } = await supabase
     .from('profiles')

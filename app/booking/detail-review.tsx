@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, TextInput, Linking,
+  TouchableOpacity, TextInput, Linking, Animated,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,8 +10,9 @@ import Svg, { Path, Circle, Polygon } from 'react-native-svg';
 import { Image } from 'expo-image';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
-import { submitReview } from '../../lib/api';
+import { submitReview, getBookingById } from '../../lib/api';
 import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
 function StarRating({ rating, onRate }: { rating: number; onRate: (r: number) => void }) {
@@ -41,18 +42,40 @@ export default function BookingDetailReviewScreen() {
   const [rating, setRating] = useState(3);
   const [review, setReview] = useState('');
   const [loading, setLoading] = useState(false);
+  const [booking, setBooking] = useState<any>(null);
+  const [fetching, setFetching] = useState(true);
+  const contentFade = useRef(new Animated.Value(0)).current;
 
   const bookingId = params.bookingId as string;
-  const propertyId = params.propertyId as string;
-  const propertyName = params.propertyName as string || 'Property';
-  const propertyImage = params.propertyImage as string || '';
-  const location = params.location as string || '';
-  const nights = Number(params.nights) || 1;
-  const total = Number(params.total) || 0;
-  const serviceFee = Number(params.serviceFee) || 0;
+
+  useEffect(() => {
+    if (!bookingId) { setFetching(false); return; }
+    getBookingById(bookingId)
+      .then(setBooking)
+      .catch(() => {})
+      .finally(() => setFetching(false));
+  }, [bookingId]);
+
+  useEffect(() => {
+    if (!fetching) {
+      contentFade.setValue(0);
+      Animated.timing(contentFade, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    }
+  }, [fetching]);
+
+  const property = booking?.properties;
+  const propertyId = booking?.property_id || (params.propertyId as string);
+  const propertyName = property?.name || (params.propertyName as string) || 'Property';
+  const propertyImage = property?.images?.[0] || (params.propertyImage as string) || '';
+  const location = property?.location || (params.location as string) || '';
+  const nights = booking?.nights ?? (Number(params.nights) || 1);
+  const total = booking?.total ?? (Number(params.total) || 0);
+  const serviceFee = booking?.service_fee ?? (Number(params.serviceFee) || 0);
   const nightlyRate = nights > 0 ? Math.round((total - serviceFee) / nights) : 0;
-  const dates = params.dates as string || '';
-  const guestCount = Number(params.guestCount) || 1;
+  const dates = booking?.check_in
+    ? `${new Date(booking.check_in).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} – ${new Date(booking.check_out).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+    : (params.dates as string || '');
+  const guestCount = booking?.guests ?? (Number(params.guestCount) || 1);
 
   const handleSubmitReview = async () => {
     if (rating === 0) { toast.error('Rating required', 'Please select a star rating.'); return; }
@@ -113,6 +136,18 @@ export default function BookingDetailReviewScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
+        {fetching ? (
+          <View>
+            <Skeleton width="100%" height={220} borderRadius={0} />
+            <View style={styles.content}>
+              <Skeleton width="60%" height={20} style={{ marginBottom: 10 }} />
+              <Skeleton width="40%" height={13} style={{ marginBottom: 20 }} />
+              <Skeleton width="100%" height={80} borderRadius={12} style={{ marginBottom: 20 }} />
+              <Skeleton width="100%" height={220} borderRadius={16} />
+            </View>
+          </View>
+        ) : (
+        <Animated.View style={{ opacity: contentFade }}>
         {/* Property image */}
         <View style={styles.propertyImage}>
           {propertyImage ? (
@@ -196,6 +231,8 @@ export default function BookingDetailReviewScreen() {
 
           <View style={{ height: 100 }} />
         </View>
+        </Animated.View>
+        )}
       </ScrollView>
 
       {/* Floating support buttons */}
@@ -256,7 +293,7 @@ const styles = StyleSheet.create({
   },
   reviewNote: { fontSize: 12, fontFamily: 'Poppins-Regular', color: '#9E96A8', textAlign: 'center' },
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E', marginBottom: 16 },
-  paymentRows: { gap: 12, marginBottom: 20 },
+  paymentRows: { gap: 12, marginBottom: 20, paddingRight: 64 },
   paymentRow: { flexDirection: 'row', justifyContent: 'space-between' },
   paymentLabel: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#6B6478' },
   paymentValue: { fontSize: 14, fontFamily: 'Poppins-Medium', color: '#1E1E1E', fontWeight: '500' },

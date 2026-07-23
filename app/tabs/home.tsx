@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { BookamLogo } from '../../components/ui/BookamLogo';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { Avatar } from '../../components/ui/Avatar';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../components/ui/ToastContext';
 import {
@@ -225,14 +226,6 @@ export default function HomeScreen() {
     });
   };
 
-  const getInitials = () => {
-    if (profile?.full_name) {
-      const parts = profile.full_name.split(' ');
-      return parts.map((p: string) => p[0]).join('').toUpperCase().slice(0, 2);
-    }
-    return 'JD';
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="dark" />
@@ -256,13 +249,11 @@ export default function HomeScreen() {
                 </View>
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.avatar} onPress={() => router.push('/tabs/profile')} disabled={authLoading}>
+            <TouchableOpacity onPress={() => router.push('/tabs/profile')} disabled={authLoading}>
               {authLoading ? (
                 <Skeleton width={40} height={40} borderRadius={20} />
-              ) : profile?.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} contentFit="cover" transition={200} />
               ) : (
-                <Text style={styles.avatarText}>{getInitials()}</Text>
+                <Avatar name={profile?.full_name} color={profile?.avatar_color} size={40} />
               )}
             </TouchableOpacity>
           </View>
@@ -405,9 +396,6 @@ const styles = StyleSheet.create({
   bellBtn: { position: 'relative' },
   bellBadge: { position: 'absolute', top: -4, right: -6, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#D94F4F', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3, borderWidth: 1.5, borderColor: '#FFFFFF' },
   bellBadgeText: { fontSize: 9, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Poppins-Bold' },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#6B2D82', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  avatarImage: { width: 40, height: 40 },
-  avatarText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF', fontFamily: 'Poppins-Bold' },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 20, marginBottom: 12 },
   locationText: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#6B6478' },
   searchBar: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F5F5F5', borderRadius: 12, marginHorizontal: 20, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 16 },

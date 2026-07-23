@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Animated, Clipboard,
+  Animated, Clipboard, ScrollView,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -87,13 +87,17 @@ export default function BookingConfirmedScreen() {
       {/* White card */}
       <Animated.View
         style={[
-          styles.card,
+          styles.cardWrap,
           {
             opacity: fadeAnim,
             transform: [{ translateY: slideAnim }],
           },
         ]}
       >
+        <ScrollView
+          contentContainerStyle={styles.card}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Property photo */}
         {propertyImage ? (
           <Image source={{ uri: propertyImage }} style={styles.propertyPhoto} contentFit="cover" transition={200} />
@@ -156,6 +160,7 @@ export default function BookingConfirmedScreen() {
         >
           <Text style={styles.homeBtnText}>Go Home</Text>
         </TouchableOpacity>
+        </ScrollView>
       </Animated.View>
     </View>
   );
@@ -193,9 +198,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
   },
   refText: { fontSize: 13, fontFamily: 'Poppins-Medium', color: '#FFFFFF', fontWeight: '500' },
-  card: {
+  cardWrap: {
     flex: 1, backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
+  },
+  card: {
     paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32,
   },
   propertyPhoto: { width: '100%', height: 160, borderRadius: 14, marginBottom: 14, backgroundColor: '#F0EBF8' },

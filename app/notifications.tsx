@@ -14,12 +14,43 @@ import {
   type AppNotification,
 } from '../lib/api';
 
-const TYPE_ICON: Record<string, string> = {
-  booking_confirmed: '✅',
-  checkin_reminder: '🔑',
-  booking_cancelled: '❌',
-  general: '🔔',
-};
+function NotificationIcon({ type }: { type: string }) {
+  const config: Record<string, { bg: string; color: string }> = {
+    booking_confirmed: { bg: '#F0FDF6', color: '#2E9E6B' },
+    checkin_reminder: { bg: '#FFF8EA', color: '#C9A84C' },
+    booking_cancelled: { bg: '#FEF2F2', color: '#D94F4F' },
+    general: { bg: '#F0E6FA', color: '#6B2D82' },
+  };
+  const c = config[type] ?? config.general;
+
+  return (
+    <View style={[iconStyles.wrap, { backgroundColor: c.bg }]}>
+      {type === 'booking_confirmed' ? (
+        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+          <Path d="M20 6L9 17l-5-5" stroke={c.color} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      ) : type === 'checkin_reminder' ? (
+        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+          <Circle cx="8" cy="15" r="4" stroke={c.color} strokeWidth={2} />
+          <Path d="M11 12l7-7M15 5l2 2M18 2l2 2" stroke={c.color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      ) : type === 'booking_cancelled' ? (
+        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+          <Path d="M18 6L6 18M6 6l12 12" stroke={c.color} strokeWidth={2.4} strokeLinecap="round" />
+        </Svg>
+      ) : (
+        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+          <Path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" stroke={c.color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M13.73 21a2 2 0 01-3.46 0" stroke={c.color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      )}
+    </View>
+  );
+}
+
+const iconStyles = StyleSheet.create({
+  wrap: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+});
 
 function timeAgo(iso: string): string {
   const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -131,10 +162,10 @@ export default function NotificationsScreen() {
                 onPress={() => handleOpen(n)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.cardIcon}>{TYPE_ICON[n.type] ?? '🔔'}</Text>
+                <NotificationIcon type={n.type} />
                 <View style={styles.cardBody}>
                   <View style={styles.cardTitleRow}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>{n.title}</Text>
+                    <Text style={[styles.cardTitle, !n.read && styles.cardTitleUnread]} numberOfLines={1}>{n.title}</Text>
                     {!n.read && <View style={styles.unreadDot} />}
                   </View>
                   <Text style={styles.cardText} numberOfLines={2}>{n.body}</Text>
@@ -161,14 +192,20 @@ const styles = StyleSheet.create({
   scroll: { padding: 16, paddingBottom: 40 },
   card: {
     flexDirection: 'row', gap: 12, backgroundColor: '#FFFFFF',
-    borderRadius: 14, padding: 14, marginBottom: 10,
-    borderWidth: 1, borderColor: '#F0EBF8',
+    borderRadius: 16, padding: 14, marginBottom: 10,
+    borderWidth: 1, borderColor: '#F5F2F8',
+    shadowColor: '#6B2D82', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
-  cardUnread: { backgroundColor: '#FBF8FE', borderColor: '#E8DCF5' },
-  cardIcon: { fontSize: 22 },
-  cardBody: { flex: 1 },
+  cardUnread: {
+    backgroundColor: '#FBF8FE', borderColor: '#E8DCF5',
+    borderLeftWidth: 3, borderLeftColor: '#6B2D82',
+    shadowOpacity: 0.08,
+  },
+  cardBody: { flex: 1, justifyContent: 'center' },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 },
-  cardTitle: { flex: 1, fontSize: 14, fontFamily: 'Poppins-SemiBold', fontWeight: '600', color: '#1E1E1E' },
+  cardTitle: { flex: 1, fontSize: 14, fontFamily: 'Poppins-Medium', fontWeight: '500', color: '#4A4458' },
+  cardTitleUnread: { fontFamily: 'Poppins-Bold', fontWeight: '700', color: '#1E1E1E' },
   unreadDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#6B2D82' },
   cardText: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#6B6478', lineHeight: 18, marginBottom: 4 },
   cardTime: { fontSize: 11, fontFamily: 'Poppins-Regular', color: '#B3ABC0' },

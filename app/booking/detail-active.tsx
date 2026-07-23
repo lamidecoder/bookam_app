@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Clipboard, Modal,
@@ -10,7 +10,8 @@ import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { Image } from 'expo-image';
 import { useToast } from '../../components/ui/ToastContext';
-import { cancelBooking } from '../../lib/api';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { cancelBooking, getBookingById } from '../../lib/api';
 import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
 function CancelSheet({
@@ -103,20 +104,49 @@ export default function BookingDetailActiveScreen() {
   const toast = useToast();
   const [cancelLoading, setCancelLoading] = useState(false);
   const [showCancelSheet, setShowCancelSheet] = useState(false);
+  const [booking, setBooking] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const contentFade = useRef(new Animated.Value(0)).current;
 
   const bookingId = params.bookingId as string;
-  const propertyName = params.propertyName as string || 'Property';
-  const propertyImage = params.propertyImage as string || '';
-  const propertyType = params.propertyType as string || 'Shortlet';
-  const location = params.location as string || '';
-  const checkIn = params.checkIn as string || '';
-  const checkOut = params.checkOut as string || '';
-  const nights = Number(params.nights) || 1;
-  const total = Number(params.total) || 0;
-  const serviceFee = Number(params.serviceFee) || 0;
-  const cancellationFee = Number(params.cancellationFee) || 0;
+
+  useEffect(() => {
+    if (!bookingId) { setLoading(false); setLoadError(true); return; }
+    getBookingById(bookingId)
+      .then(setBooking)
+      .catch(() => setLoadError(true))
+      .finally(() => setLoading(false));
+  }, [bookingId]);
+
+  useEffect(() => {
+    if (!loading) {
+      contentFade.setValue(0);
+      Animated.timing(contentFade, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    }
+  }, [loading]);
+
+  // The real, fetched booking is authoritative - route params are only
+  // ever used as a fallback for fields the fetch hasn't resolved yet
+  // (or in the unlikely case it fails), not the primary source. This
+  // is what makes this screen work correctly regardless of how someone
+  // got here - tapping a booking from the list, or tapping a
+  // notification that only ever passes bookingId and nothing else.
+  const property = booking?.properties;
+  const propertyName = property?.name || (params.propertyName as string) || 'Property';
+  const propertyImage = property?.images?.[0] || (params.propertyImage as string) || '';
+  const propertyType = property?.type || (params.propertyType as string) || 'Shortlet';
+  const location = property?.location || (params.location as string) || '';
+  const formatDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  const checkIn = booking?.check_in ? formatDate(booking.check_in) : (params.checkIn as string || '');
+  const checkOut = booking?.check_out ? formatDate(booking.check_out) : (params.checkOut as string || '');
+  const nights = booking?.nights ?? (Number(params.nights) || 1);
+  const total = booking?.total ?? (Number(params.total) || 0);
+  const serviceFee = booking?.service_fee ?? (Number(params.serviceFee) || 0);
+  const cancellationFee = booking?.cancellation_fee ?? (Number(params.cancellationFee) || 0);
   const nightlyRate = nights > 0 ? Math.round((total - serviceFee) / nights) : 0;
-  const ref = params.ref as string || bookingId?.slice(0, 12).toUpperCase() || '';
+  const ref = booking?.payment_ref || (params.ref as string) || bookingId?.slice(0, 12).toUpperCase() || '';
+  const bookingStatus = booking?.status || 'confirmed';
 
   const handleCopyRef = () => {
     Clipboard.setString(ref);
@@ -139,6 +169,7 @@ export default function BookingDetailActiveScreen() {
     setCancelLoading(true);
     try {
       await cancelBooking(bookingId);
+      setBooking((cur: any) => cur ? { ...cur, status: 'cancelled' } : cur);
       setShowCancelSheet(false);
       toast.success('Booking cancelled', 'Your booking has been cancelled. Refund is being processed.');
       setTimeout(() => router.replace('/tabs/bookings'), 1500);
@@ -172,6 +203,20 @@ export default function BookingDetailActiveScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
+        {loading ? (
+          <View>
+            <Skeleton width="100%" height={220} borderRadius={0} />
+            <View style={styles.content}>
+              <Skeleton width="70%" height={22} style={{ marginBottom: 10 }} />
+              <Skeleton width="45%" height={13} style={{ marginBottom: 20 }} />
+              <Skeleton width="100%" height={180} borderRadius={16} style={{ marginBottom: 20 }} />
+              <Skeleton width="100%" height={16} style={{ marginBottom: 16 }} />
+              <Skeleton width="100%" height={16} style={{ marginBottom: 16 }} />
+              <Skeleton width="100%" height={16} />
+            </View>
+          </View>
+        ) : (
+        <Animated.View style={{ opacity: contentFade }}>
         {/* Property image */}
         <View style={styles.propertyImage}>
           {propertyImage ? (
@@ -250,9 +295,23 @@ export default function BookingDetailActiveScreen() {
             </View>
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>Status</Text>
-              <View style={styles.statusBadge}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusText}>Confirmed</Text>
+              <View style={[
+                styles.statusBadge,
+                bookingStatus === 'cancelled' && { backgroundColor: '#FEF2F2' },
+                bookingStatus === 'pending' && { backgroundColor: '#FFFBEB' },
+              ]}>
+                <View style={[
+                  styles.statusDot,
+                  bookingStatus === 'cancelled' && { backgroundColor: '#D94F4F' },
+                  bookingStatus === 'pending' && { backgroundColor: '#E8922A' },
+                ]} />
+                <Text style={[
+                  styles.statusText,
+                  bookingStatus === 'cancelled' && { color: '#D94F4F' },
+                  bookingStatus === 'pending' && { color: '#E8922A' },
+                ]}>
+                  {bookingStatus.charAt(0).toUpperCase() + bookingStatus.slice(1)}
+                </Text>
               </View>
             </View>
           </View>
@@ -273,6 +332,8 @@ export default function BookingDetailActiveScreen() {
 
           <View style={{ height: 100 }} />
         </View>
+        </Animated.View>
+        )}
       </ScrollView>
 
       {/* Floating support buttons */}
@@ -372,7 +433,7 @@ const styles = StyleSheet.create({
   stayRowValue: { fontSize: 13, fontFamily: 'Poppins-Medium', color: '#1E1E1E', fontWeight: '500' },
   stayTotalLabel: { fontSize: 15, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E' },
   stayTotalValue: { fontSize: 18, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#6B2D82' },
-  metaRows: { gap: 16, marginBottom: 24 },
+  metaRows: { gap: 16, marginBottom: 24, paddingRight: 64 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   metaLabel: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#6B6478' },
   metaValue: { fontSize: 13, fontFamily: 'Poppins-Medium', color: '#1E1E1E', fontWeight: '500' },
