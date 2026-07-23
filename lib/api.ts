@@ -211,6 +211,7 @@ export async function createBooking(booking: {
   service_fee: number;
   total: number;
   cancellation_fee: number;
+  caution_fee?: number;
 }) {
   const { data, error } = await supabase
     .from('bookings')

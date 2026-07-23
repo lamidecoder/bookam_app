@@ -32,21 +32,6 @@ function shuffleArray<T>(arr: T[]): T[] {
   return copy;
 }
 
-// Rotates each property's own images array so a randomly-picked photo
-// becomes index 0 - once per load, not a continuous auto-cycle while
-// the card is on screen (that would be visually busy). Since every
-// card/detail screen already just reads images[0] as the main photo,
-// reordering the array itself means no other code needs to change.
-function withRandomizedMainImage<T extends { images?: string[] }>(properties: T[]): T[] {
-  return properties.map((p) => {
-    if (!p.images || p.images.length <= 1) return p;
-    const pick = Math.floor(Math.random() * p.images.length);
-    if (pick === 0) return p;
-    const reordered = [p.images[pick], ...p.images.slice(0, pick), ...p.images.slice(pick + 1)];
-    return { ...p, images: reordered };
-  });
-}
-
 function VerifiedBadge() {
   return (
     <View style={styles.verifiedBadge}>
@@ -146,8 +131,14 @@ export default function HomeScreen() {
         getProperties(typeFilter ? { type: typeFilter } : undefined),
       ]);
       if (thisRequestId === requestId.current) {
-        setFeatured(shuffleArray(withRandomizedMainImage(featuredData)));
-        setAllProperties(shuffleArray(withRandomizedMainImage(allData)));
+        const shuffledFeatured = shuffleArray(featuredData);
+        setFeatured(shuffledFeatured);
+        // With few properties, the same one can easily qualify for
+        // both Featured and the full list below it, showing it twice
+        // on screen - exclude whatever's already in Featured from the
+        // main grid so nothing repeats.
+        const featuredIds = new Set(shuffledFeatured.map((p: any) => p.id));
+        setAllProperties(shuffleArray(allData.filter((p: any) => !featuredIds.has(p.id))));
       }
     } catch (e) {
       console.error('Load error:', e);
@@ -185,22 +176,19 @@ export default function HomeScreen() {
     }
     // Real-time subscription — updates instantly when admin changes data
     const sub = subscribeToProperties(async (updated) => {
-      // Randomized main image is fine to reapply here (just picks a
-      // different valid photo), but deliberately NOT re-shuffling list
-      // order on every real-time update - that fires often, and
-      // reordering the whole list under someone actively scrolling
-      // would be disorienting. Order only reshuffles on a deliberate
-      // load: initial open or pull-to-refresh, via loadData() above.
-      setAllProperties(withRandomizedMainImage(updated));
       // Featured wasn't previously refreshed by this subscription, so a
       // property newly qualifying as Featured (or an existing one's
       // rating changing) wouldn't show up on an already-open home
       // screen until the next pull-to-refresh.
       try {
         const featuredData = await getFeaturedProperties();
-        setFeatured(withRandomizedMainImage(featuredData));
+        setFeatured(featuredData);
+        const featuredIds = new Set(featuredData.map((p: any) => p.id));
+        setAllProperties(updated.filter((p: any) => !featuredIds.has(p.id)));
       } catch {
-        // Non-fatal — the main list above still updated correctly either way.
+        // Featured fetch failed - still show the full list rather than
+        // nothing, just without de-duplication against Featured this time.
+        setAllProperties(updated);
       }
     });
     return () => { sub.unsubscribe(); };

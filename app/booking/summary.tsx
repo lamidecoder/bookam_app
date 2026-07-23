@@ -91,6 +91,7 @@ export default function BookingSummaryScreen() {
     guestName: profile?.full_name || user?.email || 'Guest',
     guestPhone: profile?.phone || '',
     cancellationFee: Number(params.cancellationFee) || 0,
+    cautionFee: Number(params.cautionFee) || 0,
     guests: Number(params.guests) || 1,
   };
 
@@ -143,6 +144,7 @@ export default function BookingSummaryScreen() {
         service_fee: booking.serviceFee,
         total: booking.total,
         cancellation_fee: booking.cancellationFee,
+        caution_fee: booking.cautionFee,
       });
 
       router.push({
@@ -210,10 +212,12 @@ export default function BookingSummaryScreen() {
           { label: 'Check-out', value: booking.checkOut },
           { label: 'Nights', value: `${booking.nights} nights` },
           { label: 'Nightly rate', value: `₦${booking.nightlyRate.toLocaleString()} × ${booking.nights} nights` },
+          ...(booking.serviceFee > 0 ? [{ label: 'Service fee', value: `₦${booking.serviceFee.toLocaleString()}` }] : []),
+          ...(booking.cautionFee > 0 ? [{ label: 'Refundable caution fee', value: `₦${booking.cautionFee.toLocaleString()}`, refundable: true }] : []),
         ].map((row) => (
           <View key={row.label} style={styles.detailRow}>
             <Text style={styles.detailLabel}>{row.label}</Text>
-            <Text style={styles.detailValue}>{row.value}</Text>
+            <Text style={[styles.detailValue, (row as any).refundable && styles.detailValueRefundable]}>{row.value}</Text>
           </View>
         ))}
 
@@ -257,11 +261,6 @@ export default function BookingSummaryScreen() {
         <InfoBanner
           type="info"
           text="Your selected dates are held for 15 minutes while you complete payment."
-        />
-        <View style={{ height: 12 }} />
-        <InfoBanner
-          type="warning"
-          text={`A cancellation fee of ₦${booking.cancellationFee.toLocaleString()} applies to this property.`}
         />
 
         <View style={{ height: 20 }} />
@@ -329,6 +328,7 @@ const styles = StyleSheet.create({
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 },
   detailLabel: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#6B6478' },
   detailValue: { fontSize: 14, fontFamily: 'Poppins-Medium', color: '#1E1E1E', fontWeight: '500' },
+  detailValueRefundable: { color: '#2E9E6B' },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   totalLabel: { fontSize: 17, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E' },
   totalValue: { fontSize: 20, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#6B2D82' },

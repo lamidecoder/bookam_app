@@ -172,7 +172,8 @@ export default function PropertyDetailScreen() {
 
   const nightlyRate = property?.price_per_night || 0;
   const serviceFee = property?.service_fee || 0;
-  const total = nights * nightlyRate + serviceFee;
+  const cautionFeeAmount = property?.caution_fee || 0;
+  const total = nights * nightlyRate + serviceFee + cautionFeeAmount;
 
   const handleToggleSave = async () => {
     if (!user) { router.push('/auth/login'); return; }
@@ -216,6 +217,7 @@ export default function PropertyDetailScreen() {
         serviceFee,
         total,
         cancellationFee: Math.round((nightlyRate * nights * (property.cancellation_fee_percent || 15)) / 100),
+        cautionFee: property.caution_fee || 0,
         guests: 1,
       },
     });
@@ -413,29 +415,31 @@ export default function PropertyDetailScreen() {
             </>
           )}
 
-          <View style={{ height: 14 }} />
-          <View style={styles.infoBanner}>
-            <View style={styles.infoBannerBar} />
-            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" style={{ marginTop: 1 }}>
-              <Circle cx="12" cy="12" r="10" stroke="#3A7BD5" strokeWidth={1.8} />
-              <Path d="M12 8v4M12 16h.01" stroke="#3A7BD5" strokeWidth={1.8} strokeLinecap="round" />
-            </Svg>
-            <Text style={styles.infoBannerText}>
-              Minimum stay is {property.min_stay || 1} night{property.min_stay > 1 ? 's' : ''} for this property.
-            </Text>
-          </View>
+          {property.booking_policy ? (
+            <>
+              <View style={{ height: 14 }} />
+              <View style={styles.policyCard}>
+                <Text style={styles.policyTitle}>Booking &amp; Cancellation Policy</Text>
+                <Text style={styles.policyText}>{property.booking_policy}</Text>
+              </View>
+            </>
+          ) : null}
 
-          <View style={{ height: 10 }} />
-          <View style={styles.warningBanner}>
-            <View style={styles.warningBannerBar} />
-            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" style={{ marginTop: 1 }}>
-              <Path d="M12 2L2 20h20L12 2z" stroke="#E8922A" strokeWidth={1.8} strokeLinejoin="round" />
-              <Path d="M12 9v4M12 17h.01" stroke="#E8922A" strokeWidth={1.8} strokeLinecap="round" />
-            </Svg>
-            <Text style={styles.warningBannerText}>
-              All cancellations attract a fee of {property.cancellation_fee_percent || 15}% if cancelled within 24 hours.
-            </Text>
-          </View>
+          {property.caution_fee > 0 ? (
+            <>
+              <View style={{ height: 10 }} />
+              <View style={styles.infoBanner}>
+                <View style={styles.infoBannerBar} />
+                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" style={{ marginTop: 1 }}>
+                  <Circle cx="12" cy="12" r="10" stroke="#3A7BD5" strokeWidth={1.8} />
+                  <Path d="M12 8v4M12 16h.01" stroke="#3A7BD5" strokeWidth={1.8} strokeLinecap="round" />
+                </Svg>
+                <Text style={styles.infoBannerText}>
+                  A refundable caution fee of ₦{property.caution_fee.toLocaleString()} applies, returned after checkout if the property is undamaged.
+                </Text>
+              </View>
+            </>
+          ) : null}
 
           <View style={styles.divider} />
 
@@ -547,6 +551,9 @@ const styles = StyleSheet.create({
   ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   ruleCheck: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFF8E7', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#C9A84C' },
   ruleText: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#1E1E1E', flex: 1, flexWrap: 'wrap' },
+  policyCard: { backgroundColor: '#F8F5FA', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#F0EBF8' },
+  policyTitle: { fontSize: 14, fontFamily: 'Poppins-SemiBold', fontWeight: '600', color: '#1E1E1E', marginBottom: 6 },
+  policyText: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#6B6478', lineHeight: 19 },
   infoBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: '#EFF6FF', borderRadius: 10, padding: 14, overflow: 'hidden' },
   infoBannerBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#3A7BD5' },
   infoBannerText: { flex: 1, fontSize: 13, fontFamily: 'Poppins-Regular', color: '#1E40AF', lineHeight: 20 },
