@@ -4,13 +4,13 @@ import {
   ScrollView, Linking,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/ui/ToastContext';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { CharacterAvatar } from '../../components/ui/CharacterAvatar';
 import { useAuth } from '../../hooks/useAuth';
 import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
@@ -43,12 +43,6 @@ export default function ProfileScreen() {
   const displayName = profile?.full_name || 'Guest';
   const displayPhone = profile?.phone || 'Not set';
   const displayEmail = profile?.email || user?.email || '';
-  const initials = displayName
-    .split(' ')
-    .map((p: string) => p[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2) || 'GU';
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -73,15 +67,11 @@ export default function ProfileScreen() {
         {/* User Card */}
         <View style={styles.userCard}>
           <View style={styles.avatarWrap}>
-            <View style={styles.avatar}>
-              {loading ? (
-                <Skeleton width={60} height={60} borderRadius={30} />
-              ) : profile?.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} contentFit="cover" transition={200} />
-              ) : (
-                <Text style={styles.avatarText}>{initials}</Text>
-              )}
-            </View>
+            {loading ? (
+              <Skeleton width={60} height={60} borderRadius={30} />
+            ) : (
+              <CharacterAvatar id={profile?.avatar_color} size={60} />
+            )}
           </View>
           <View style={styles.userInfo}>
             {loading ? (
@@ -123,7 +113,7 @@ export default function ProfileScreen() {
           <MenuRow
             icon={<Svg width={20} height={20} viewBox="0 0 24 24" fill="none"><Path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="#6B2D82" strokeWidth={1.8} strokeLinecap="round" /></Svg>}
             label="Notification Settings"
-            onPress={() => toast.info('Coming soon', 'Notification settings coming in v1.1')}
+            onPress={() => router.push('/profile/notification-settings')}
           />
           <View style={styles.menuDivider} />
           <MenuRow
@@ -166,13 +156,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05, shadowRadius: 8, elevation: 3,
   },
   avatarWrap: {},
-  avatar: {
-    width: 60, height: 60, borderRadius: 30,
-    backgroundColor: '#6B2D82', alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarImage: { width: 60, height: 60 },
-  avatarText: { fontSize: 20, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#FFFFFF' },
   userInfo: { flex: 1, gap: 2 },
   userName: { fontSize: 16, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E' },
   userPhone: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#6B6478' },

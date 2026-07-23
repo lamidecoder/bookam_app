@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { Avatar, AVATAR_COLORS } from '../../components/ui/Avatar';
+import { CharacterAvatar, AVATAR_CHARACTERS } from '../../components/ui/CharacterAvatar';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
@@ -21,8 +21,8 @@ export default function EditProfileScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
-  const [savingColor, setSavingColor] = useState(false);
+  const [avatarChar, setAvatarChar] = useState<string>(AVATAR_CHARACTERS[0]);
+  const [savingAvatar, setSavingAvatar] = useState(false);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
@@ -32,22 +32,22 @@ export default function EditProfileScreen() {
       setEmail(profile.email || user?.email || '');
       const rawPhone = profile.phone || '';
       setPhone(rawPhone.replace(/^\+234/, '').replace(/^0/, ''));
-      setAvatarColor(profile.avatar_color || AVATAR_COLORS[0]);
+      setAvatarChar(profile.avatar_color || AVATAR_CHARACTERS[0]);
     }
   }, [profile, user]);
 
-  const handlePickColor = async (color: string) => {
-    if (!user || color === avatarColor) return;
-    const previous = avatarColor;
-    setAvatarColor(color); // instant, optimistic
-    setSavingColor(true);
+  const handlePickCharacter = async (charId: string) => {
+    if (!user || charId === avatarChar) return;
+    const previous = avatarChar;
+    setAvatarChar(charId); // instant, optimistic
+    setSavingAvatar(true);
     try {
-      await updateProfile(user.id, { avatar_color: color });
+      await updateProfile(user.id, { avatar_color: charId });
     } catch (e) {
-      setAvatarColor(previous);
+      setAvatarChar(previous);
       toast.error('Could not save', 'Please try again.');
     } finally {
-      setSavingColor(false);
+      setSavingAvatar(false);
     }
   };
 
@@ -136,26 +136,21 @@ export default function EditProfileScreen() {
             {authLoading ? (
               <Skeleton width={90} height={90} borderRadius={45} />
             ) : (
-              <Avatar name={fullName} color={avatarColor} size={90} />
+              <CharacterAvatar id={avatarChar} size={90} />
             )}
-            <Text style={styles.colorPickerLabel}>Choose your color</Text>
+            <Text style={styles.colorPickerLabel}>Choose your avatar</Text>
             <View style={styles.colorGrid}>
-              {AVATAR_COLORS.map((c) => (
+              {AVATAR_CHARACTERS.map((charId) => (
                 <TouchableOpacity
-                  key={c}
-                  onPress={() => handlePickColor(c)}
-                  disabled={savingColor}
+                  key={charId}
+                  onPress={() => handlePickCharacter(charId)}
+                  disabled={savingAvatar}
                   style={[
-                    styles.colorSwatch,
-                    { backgroundColor: c },
-                    c === avatarColor && styles.colorSwatchSelected,
+                    styles.avatarSwatch,
+                    charId === avatarChar && styles.avatarSwatchSelected,
                   ]}
                 >
-                  {c === avatarColor && (
-                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                      <Path d="M20 6L9 17l-5-5" stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
-                    </Svg>
-                  )}
+                  <CharacterAvatar id={charId} size={52} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -233,13 +228,13 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 24, paddingBottom: 40 },
   avatarSection: { alignItems: 'center', paddingTop: 28, paddingBottom: 32, gap: 14 },
   colorPickerLabel: { fontSize: 13, fontFamily: 'Poppins-Medium', fontWeight: '500', color: '#9E96A8', marginTop: 4 },
-  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, paddingHorizontal: 32 },
-  colorSwatch: {
-    width: 40, height: 40, borderRadius: 20,
+  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, paddingHorizontal: 24 },
+  avatarSwatch: {
+    width: 60, height: 60, borderRadius: 30,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: 'transparent',
+    borderWidth: 2.5, borderColor: 'transparent',
   },
-  colorSwatchSelected: { borderColor: '#1E1E1E' },
+  avatarSwatchSelected: { borderColor: '#6B2D82' },
   form: { gap: 6, marginBottom: 32 },
   fieldLabel: {
     fontSize: 14, fontFamily: 'Poppins-SemiBold', fontWeight: '600',

@@ -183,11 +183,21 @@ export function subscribeToProperties(callback: (properties: any[]) => void) {
 export async function getUserBookings(userId: string) {
   const { data, error } = await supabase
     .from('bookings')
-    .select(`*, properties(name, location, area, images, type)`)
+    .select(`*, properties(name, location, area, images, type, cancellation_fee_percent)`)
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data || [];
+}
+
+export async function getBookingById(bookingId: string) {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(`*, properties(name, location, area, images, type, cancellation_fee_percent)`)
+    .eq('id', bookingId)
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 export async function createBooking(booking: {

@@ -11,7 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { BookamLogo } from '../../components/ui/BookamLogo';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { Avatar } from '../../components/ui/Avatar';
+import { CharacterAvatar } from '../../components/ui/CharacterAvatar';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../components/ui/ToastContext';
 import {
@@ -253,7 +253,7 @@ export default function HomeScreen() {
               {authLoading ? (
                 <Skeleton width={40} height={40} borderRadius={20} />
               ) : (
-                <Avatar name={profile?.full_name} color={profile?.avatar_color} size={40} />
+                <CharacterAvatar id={profile?.avatar_color} size={40} />
               )}
             </TouchableOpacity>
           </View>
