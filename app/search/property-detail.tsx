@@ -12,7 +12,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 import { useAuth } from '../../hooks/useAuth';
-import { getProperty, getUnavailableDates, toggleSavedProperty, getSavedPropertyIds } from '../../lib/api';
+import { getProperty, getUnavailableDates, getPropertyReviews, toggleSavedProperty, getSavedPropertyIds } from '../../lib/api';
 import { optimizedImageUrl } from '../../lib/cloudinary';
 
 const DAY_LABELS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
@@ -87,6 +87,7 @@ export default function PropertyDetailScreen() {
 
   const [selectedCheckIn, setSelectedCheckIn] = useState<string | null>(null);
   const [selectedCheckOut, setSelectedCheckOut] = useState<string | null>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
 
   useEffect(() => {
     if (!propertyId) { setLoading(false); return; }
@@ -98,6 +99,7 @@ export default function PropertyDetailScreen() {
         ]);
         setProperty(prop);
         setBlockedDates(blocked);
+        getPropertyReviews(propertyId).then(setReviews).catch(() => {});
         if (user) {
           const savedIds = await getSavedPropertyIds(user.id);
           setSaved(savedIds.includes(propertyId));
@@ -441,6 +443,38 @@ export default function PropertyDetailScreen() {
             </>
           ) : null}
 
+          {reviews.length > 0 ? (
+            <>
+              <View style={{ height: 20 }} />
+              <Text style={styles.sectionTitle}>
+                Reviews ({property.review_count || reviews.length})
+              </Text>
+              {reviews.slice(0, 5).map((r) => (
+                <View key={r.id} style={styles.reviewCard}>
+                  <View style={styles.reviewCardHeader}>
+                    <Text style={styles.reviewerName}>{r.guestFirstName}</Text>
+                    <View style={styles.reviewStars}>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Svg key={n} width={13} height={13} viewBox="0 0 24 24" fill="none">
+                          <Path
+                            d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"
+                            fill={n <= r.rating ? '#C9A84C' : 'none'}
+                            stroke={n <= r.rating ? '#C9A84C' : '#D1D1D6'}
+                            strokeWidth={1.5}
+                          />
+                        </Svg>
+                      ))}
+                    </View>
+                  </View>
+                  <Text style={styles.reviewBody}>{r.body}</Text>
+                  <Text style={styles.reviewDate}>
+                    {new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </Text>
+                </View>
+              ))}
+            </>
+          ) : null}
+
           <View style={styles.divider} />
 
           <Text style={styles.sectionTitle}>Availability</Text>
@@ -552,6 +586,12 @@ const styles = StyleSheet.create({
   ruleCheck: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFF8E7', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#C9A84C' },
   ruleText: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#1E1E1E', flex: 1, flexWrap: 'wrap' },
   policyCard: { backgroundColor: '#F8F5FA', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#F0EBF8' },
+  reviewCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#F0EBF8', marginTop: 10 },
+  reviewCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  reviewerName: { fontSize: 14, fontFamily: 'Poppins-SemiBold', fontWeight: '600', color: '#1E1E1E' },
+  reviewStars: { flexDirection: 'row', gap: 2 },
+  reviewBody: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#6B6478', lineHeight: 19, marginBottom: 6 },
+  reviewDate: { fontSize: 11, fontFamily: 'Poppins-Regular', color: '#B3ABC0' },
   policyTitle: { fontSize: 14, fontFamily: 'Poppins-SemiBold', fontWeight: '600', color: '#1E1E1E', marginBottom: 6 },
   policyText: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#6B6478', lineHeight: 19 },
   infoBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: '#EFF6FF', borderRadius: 10, padding: 14, overflow: 'hidden' },

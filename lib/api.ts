@@ -583,6 +583,40 @@ export async function submitReview(review: {
   return data;
 }
 
+/**
+ * Fetches reviews for a property, with the reviewer's first name
+ * attached. Deliberately does NOT use an embedded profiles(...) join
+ * in the query - that exact pattern caused a real bug earlier
+ * (confirmBooking silently failing on every single call) because
+ * reviews.user_id, like bookings.user_id, references auth.users, not
+ * profiles directly, so there's no foreign key path for PostgREST to
+ * auto-embed through. Fetches reviews and profiles separately instead,
+ * then merges them client-side - the same safe pattern already proven
+ * correct elsewhere in this codebase.
+ */
+export async function getPropertyReviews(propertyId: string) {
+  const { data: reviews, error } = await supabase
+    .from('reviews')
+    .select('id, rating, body, created_at, user_id')
+    .eq('property_id', propertyId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  if (!reviews?.length) return [];
+
+  const userIds = Array.from(new Set(reviews.map((r) => r.user_id)));
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+    .in('id', userIds);
+
+  const nameById = new Map((profiles || []).map((p) => [p.id, p.full_name]));
+
+  return reviews.map((r) => ({
+    ...r,
+    guestFirstName: (nameById.get(r.user_id) || 'Guest').split(' ')[0],
+  }));
+}
+
 // ============================================
 // USER PROFILE
 // ============================================
