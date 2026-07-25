@@ -213,11 +213,47 @@ export async function createBooking(booking: {
   cancellation_fee: number;
   caution_fee?: number;
 }) {
+  // Real overlap check right before creating the booking - the
+  // calendar the guest saw could already be stale by the time they
+  // actually submit (someone else's booking landed in between). This
+  // is the actual enforcement of the 15-minute hold promise, not just
+  // a UI message - without this, two guests could both reach this
+  // point for the same dates and both succeed.
+  const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const { data: existing, error: checkError } = await supabase
+    .from('bookings')
+    .select('id, check_in, check_out, status, created_at')
+    .eq('property_id', booking.property_id)
+    .in('status', ['confirmed', 'pending']);
+  if (checkError) throw checkError;
+
+  const newCheckIn = new Date(booking.check_in);
+  const newCheckOut = new Date(booking.check_out);
+  const hasOverlap = (existing || []).some((b) => {
+    const isActive = b.status === 'confirmed' || b.created_at >= fifteenMinutesAgo;
+    if (!isActive) return false;
+    const existingIn = new Date(b.check_in);
+    const existingOut = new Date(b.check_out);
+    // Standard range-overlap check: two date ranges overlap unless one
+    // ends before or exactly when the other begins.
+    return newCheckIn < existingOut && newCheckOut > existingIn;
+  });
+
+  if (hasOverlap) {
+    throw new Error('These dates were just booked by someone else. Please choose different dates.');
+  }
+
   const { data, error } = await supabase
     .from('bookings')
     .insert({ ...booking, status: 'pending' })
     .select()
     .single();
+  // 23P01 = exclusion constraint violation - the database-level
+  // overlap protection caught it, meaning the app-level check above
+  // somehow missed a genuine race. Same friendly message either way.
+  if (error && (error as any).code === '23P01') {
+    throw new Error('These dates were just booked by someone else. Please choose different dates.');
+  }
   if (error) throw error;
   return data;
 }
@@ -460,6 +496,57 @@ export async function getBlockedDates(propertyId: string) {
     .eq('property_id', propertyId);
   if (error) throw error;
   return data?.map(d => d.date) || [];
+}
+
+function expandDateRange(checkIn: string, checkOut: string): string[] {
+  const dates: string[] = [];
+  const current = new Date(checkIn);
+  const end = new Date(checkOut);
+  // Check-out day itself is not blocked - a guest checking out on the
+  // 10th and a new guest checking in on the 10th is normal, not an
+  // overlap.
+  while (current < end) {
+    dates.push(current.toISOString().slice(0, 10));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
+
+/**
+ * The real availability check - was previously just admin-blocked
+ * dates, meaning the calendar never actually reflected other guests'
+ * bookings at all. Now combines three sources:
+ * 1. Admin-blocked dates (maintenance, owner's own use, etc.)
+ * 2. Confirmed bookings - genuinely booked, blocks the dates outright
+ * 3. Still-active pending bookings (created less than 15 minutes ago)
+ *    - this IS the 15-minute hold mechanism itself: a pending booking
+ *      blocks the dates for other guests only while it's still fresh.
+ *      Once 15 minutes pass without payment completing, it's treated
+ *      as abandoned and no longer blocks anyone - no separate cleanup
+ *      job needed, the age check does this naturally on every read.
+ */
+export async function getUnavailableDates(propertyId: string): Promise<string[]> {
+  const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+
+  const [blockedResult, bookingsResult] = await Promise.all([
+    supabase.from('blocked_dates').select('date').eq('property_id', propertyId),
+    supabase
+      .from('bookings')
+      .select('check_in, check_out, status, created_at')
+      .eq('property_id', propertyId)
+      .in('status', ['confirmed', 'pending']),
+  ]);
+
+  if (blockedResult.error) throw blockedResult.error;
+  if (bookingsResult.error) throw bookingsResult.error;
+
+  const blockedDates = (blockedResult.data || []).map((d) => d.date);
+
+  const bookingDates = (bookingsResult.data || [])
+    .filter((b) => b.status === 'confirmed' || b.created_at >= fifteenMinutesAgo)
+    .flatMap((b) => expandDateRange(b.check_in, b.check_out));
+
+  return Array.from(new Set([...blockedDates, ...bookingDates]));
 }
 
 // ============================================

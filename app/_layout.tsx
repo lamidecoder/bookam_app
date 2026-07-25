@@ -17,7 +17,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { ToastProvider } from '../components/ui/ToastContext';
 import { TransitionPresets } from '@react-navigation/stack';
-import { Platform } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -130,9 +129,14 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
-            // Premium default transition
-            animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
-            animationDuration: 350,
+            // Same smooth horizontal slide on both platforms, rather
+            // than each platform's own default - Android's previous
+            // fade_from_bottom didn't even match the horizontal
+            // swipe-back gesture already configured below, and a
+            // consistent motion language feels more considered across
+            // both platforms than each one doing its own thing.
+            animation: 'slide_from_right',
+            animationDuration: 300,
             gestureEnabled: true,
             gestureDirection: 'horizontal',
             contentStyle: { backgroundColor: '#EEE9F5' },

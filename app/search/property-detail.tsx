@@ -12,7 +12,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 import { useAuth } from '../../hooks/useAuth';
-import { getProperty, getBlockedDates, toggleSavedProperty, getSavedPropertyIds } from '../../lib/api';
+import { getProperty, getUnavailableDates, toggleSavedProperty, getSavedPropertyIds } from '../../lib/api';
 import { optimizedImageUrl } from '../../lib/cloudinary';
 
 const DAY_LABELS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
@@ -94,7 +94,7 @@ export default function PropertyDetailScreen() {
       try {
         const [prop, blocked] = await Promise.all([
           getProperty(propertyId),
-          getBlockedDates(propertyId),
+          getUnavailableDates(propertyId),
         ]);
         setProperty(prop);
         setBlockedDates(blocked);
