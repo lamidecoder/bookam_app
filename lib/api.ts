@@ -276,7 +276,7 @@ export async function confirmBooking(bookingId: string, paystackRef: string) {
   try {
     const { data: guestProfile } = await supabase
       .from('profiles')
-      .select('full_name, notification_preferences')
+      .select('full_name, email, notification_preferences')
       .eq('id', data.user_id)
       .maybeSingle();
 
@@ -293,6 +293,19 @@ export async function confirmBooking(bookingId: string, paystackRef: string) {
         type: 'booking_confirmed',
         relatedBookingId: bookingId,
       });
+
+      if (guestProfile?.email) {
+        await sendBookingEmail({
+          to: guestProfile.email,
+          type: 'booking_confirmed',
+          firstName,
+          propertyName: data.properties?.name,
+          checkIn: new Date(data.check_in).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+          checkOut: new Date(data.check_out).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+          total: data.total,
+          bookingRef: data.payment_ref,
+        });
+      }
     }
   } catch (e) {
     console.warn('Could not create booking-confirmed notification:', e);
@@ -311,6 +324,31 @@ export type AppNotification = {
   read: boolean;
   created_at: string;
 };
+
+/**
+ * Sends a real email via the send-email Edge Function - deliberately
+ * wrapped so a failure here (Resend down, bad address, etc.) can
+ * never block the actual booking action it's attached to. Same
+ * defensive pattern already used for in-app notifications.
+ */
+async function sendBookingEmail(payload: {
+  to: string;
+  type: 'booking_confirmed' | 'checkin_reminder' | 'cancellation' | 'refund_processed';
+  firstName?: string;
+  propertyName?: string;
+  checkIn?: string;
+  checkOut?: string;
+  total?: number;
+  refundAmount?: number;
+  bookingRef?: string;
+}) {
+  try {
+    const { error } = await supabase.functions.invoke('send-email', { body: payload });
+    if (error) console.warn('send-email failed:', error);
+  } catch (e) {
+    console.warn('send-email failed:', e);
+  }
+}
 
 export async function createNotification(params: {
   userId: string;
@@ -387,7 +425,7 @@ export async function generateCheckinReminders(userId: string) {
   // confirmBooking, deliberately not an embedded profiles(...) join.
   const { data: guestProfile } = await supabase
     .from('profiles')
-    .select('full_name, notification_preferences')
+    .select('full_name, email, notification_preferences')
     .eq('id', userId)
     .maybeSingle();
 
@@ -413,6 +451,15 @@ export async function generateCheckinReminders(userId: string) {
       type: 'checkin_reminder',
       relatedBookingId: booking.id,
     }).catch(() => {});
+
+    if (guestProfile?.email) {
+      await sendBookingEmail({
+        to: guestProfile.email,
+        type: 'checkin_reminder',
+        firstName,
+        propertyName: (booking as any).properties?.name,
+      });
+    }
   }
 }
 
@@ -421,9 +468,45 @@ export async function cancelBooking(bookingId: string) {
     .from('bookings')
     .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
     .eq('id', bookingId)
-    .select()
+    .select('*, properties(name)')
     .single();
   if (error) throw error;
+
+  // Same defensive, non-fatal pattern as confirmBooking - a
+  // notification/email failure here should never surface as if the
+  // cancellation itself failed, since the cancellation already
+  // genuinely succeeded by this point.
+  try {
+    const { data: guestProfile } = await supabase
+      .from('profiles')
+      .select('full_name, email, notification_preferences')
+      .eq('id', data.user_id)
+      .maybeSingle();
+
+    const wantsBookingUpdates = guestProfile?.notification_preferences?.booking_updates !== false;
+    if (wantsBookingUpdates) {
+      const firstName = guestProfile?.full_name?.split(' ')[0];
+      await createNotification({
+        userId: data.user_id,
+        title: 'Booking cancelled',
+        body: `Your booking at ${data.properties?.name ?? 'your property'} has been cancelled.`,
+        type: 'booking_cancelled',
+        relatedBookingId: bookingId,
+      }).catch(() => {});
+
+      if (guestProfile?.email) {
+        await sendBookingEmail({
+          to: guestProfile.email,
+          type: 'cancellation',
+          firstName,
+          propertyName: data.properties?.name,
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('Could not send cancellation notification/email:', e);
+  }
+
   return data;
 }
 
