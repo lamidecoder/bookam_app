@@ -105,7 +105,11 @@ export default function ExploreScreen() {
   }, [runSearch]);
 
   const handleToggleSave = async (propertyId: string) => {
-    if (!user) { router.push('/auth/login'); return; }
+    if (!user) {
+      toast.info('Sign in required', 'Please sign in to save this property.');
+      router.push('/auth/login');
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     try {
       const nowSaved = await toggleSavedProperty(user.id, propertyId);

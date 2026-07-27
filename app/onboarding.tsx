@@ -78,13 +78,13 @@ export default function OnboardingScreen() {
       flatRef.current?.scrollToIndex({ index: activeIndex + 1, animated: true });
     } else {
       await AsyncStorage.setItem('bookam_onboarded', 'true');
-      router.replace('/auth/login');
+      router.replace('/tabs/home');
     }
   };
 
   const handleSkip = async () => {
     await AsyncStorage.setItem('bookam_onboarded', 'true');
-    router.replace('/auth/login');
+    router.replace('/tabs/home');
   };
 
   return (

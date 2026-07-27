@@ -11,9 +11,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-// Update this once you've verified your own sending domain in Resend -
-// until then, Resend's shared onboarding address works for testing.
-const FROM_ADDRESS = "Bookam <onboarding@resend.dev>";
+// bookamfast.com verified as a sending domain in Resend - required
+// before Resend allows sending to real recipients, not just the
+// account owner's own address (their sandbox restriction).
+const FROM_ADDRESS = "Bookam <bookings@bookamfast.com>";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

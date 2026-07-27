@@ -30,9 +30,9 @@ export default function RootLayout() {
 
   const initialRouteDone = useRef(false);
 
-  const goToLogin = async () => {
+  const goToHomeAsGuest = async () => {
     await AsyncStorage.setItem('bookam_onboarded', 'true');
-    router.replace('/auth/login');
+    router.replace('/tabs/home');
   };
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function RootLayout() {
       // here would override that and always dump people on Home, losing
       // their place.
       if (event === 'SIGNED_OUT') {
-        await goToLogin();
+        await goToHomeAsGuest();
       } else if (event === 'PASSWORD_RECOVERY') {
         router.replace('/auth/new-password');
       }
@@ -60,7 +60,18 @@ export default function RootLayout() {
         router.replace('/tabs/home');
       } else {
         const onboarded = await AsyncStorage.getItem('bookam_onboarded');
-        router.replace(onboarded ? '/auth/login' : '/onboarding');
+        // Not logged in no longer means forced to the login screen -
+        // browsing properties should be free, same as any real booking
+        // app (Airbnb, Booking.com). Login is only required for actions
+        // that genuinely need an account: saving a property or booking
+        // one - both already prompt for that at the moment they're
+        // attempted, with a clear explanation rather than a silent
+        // redirect.
+        if (onboarded) {
+          router.replace('/tabs/home');
+        } else {
+          router.replace('/onboarding');
+        }
       }
       initialRouteDone.current = true;
       // Hide the native splash only now — the very first frame the user
@@ -75,7 +86,7 @@ export default function RootLayout() {
     // and leave the user staring at a frozen app.
     const safetyTimeout = setTimeout(() => {
       if (!initialRouteDone.current) {
-        router.replace('/auth/login');
+        router.replace('/tabs/home');
         initialRouteDone.current = true;
         SplashScreen.hideAsync();
       }

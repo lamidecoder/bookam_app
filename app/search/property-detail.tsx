@@ -178,7 +178,11 @@ export default function PropertyDetailScreen() {
   const total = nights * nightlyRate + serviceFee + cautionFeeAmount;
 
   const handleToggleSave = async () => {
-    if (!user) { router.push('/auth/login'); return; }
+    if (!user) {
+      toast.info('Sign in required', 'Please sign in to save this property.');
+      router.push('/auth/login');
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     try {
       const nowSaved = await toggleSavedProperty(user.id, propertyId);

@@ -48,6 +48,18 @@ export default function ProfileScreen() {
     await supabase.auth.signOut();
   };
 
+  // Shows a clear reason before sending a guest to sign in, rather
+  // than silently redirecting with no explanation - same pattern
+  // already used when a guest tries to save or book a property.
+  const requireAuth = (actionLabel: string, onAuthenticated: () => void) => {
+    if (user) {
+      onAuthenticated();
+      return;
+    }
+    toast.info('Sign in required', `Please sign in to ${actionLabel}.`);
+    router.push('/auth/login');
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="dark" />
@@ -65,6 +77,23 @@ export default function ProfileScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* User Card */}
+        {!loading && !user ? (
+          <View style={styles.guestCard}>
+            <View style={styles.guestIconWrap}>
+              <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                <Circle cx="12" cy="7" r="4" stroke="#6B2D82" strokeWidth={1.8} />
+                <Path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" stroke="#6B2D82" strokeWidth={1.8} strokeLinecap="round" />
+              </Svg>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.guestTitle}>You're browsing as a guest</Text>
+              <Text style={styles.guestSub}>Sign in to book, save properties, and more.</Text>
+            </View>
+            <TouchableOpacity style={styles.guestSignInBtn} onPress={() => router.push('/auth/login')}>
+              <Text style={styles.guestSignInText}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
         <View style={styles.userCard}>
           <View style={styles.avatarWrap}>
             {loading ? (
@@ -95,25 +124,26 @@ export default function ProfileScreen() {
             </Svg>
           </TouchableOpacity>
         </View>
+        )}
 
         {/* Menu */}
         <View style={styles.menuCard}>
           <MenuRow
             icon={<Svg width={20} height={20} viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="7" r="4" stroke="#6B2D82" strokeWidth={1.8} /><Path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" stroke="#6B2D82" strokeWidth={1.8} strokeLinecap="round" /></Svg>}
             label="Edit Profile"
-            onPress={() => router.push('/profile/edit-profile')}
+            onPress={() => requireAuth('edit your profile', () => router.push('/profile/edit-profile'))}
           />
           <View style={styles.menuDivider} />
           <MenuRow
             icon={<Svg width={20} height={20} viewBox="0 0 24 24" fill="none"><Path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke="#6B2D82" strokeWidth={1.8} /></Svg>}
             label="Saved Properties"
-            onPress={() => router.push('/profile/saved-properties')}
+            onPress={() => requireAuth('view your saved properties', () => router.push('/profile/saved-properties'))}
           />
           <View style={styles.menuDivider} />
           <MenuRow
             icon={<Svg width={20} height={20} viewBox="0 0 24 24" fill="none"><Path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="#6B2D82" strokeWidth={1.8} strokeLinecap="round" /></Svg>}
             label="Notification Settings"
-            onPress={() => router.push('/profile/notification-settings')}
+            onPress={() => requireAuth('manage notification settings', () => router.push('/profile/notification-settings'))}
           />
           <View style={styles.menuDivider} />
           <MenuRow
@@ -121,13 +151,17 @@ export default function ProfileScreen() {
             label="Help and Support"
             onPress={() => router.push('/profile/help-support')}
           />
-          <View style={styles.menuDivider} />
-          <MenuRow
-            icon={<Svg width={20} height={20} viewBox="0 0 24 24" fill="none"><Path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="#D94F4F" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" /></Svg>}
-            label="Log Out"
-            onPress={handleLogout}
-            danger
-          />
+          {user && (
+            <>
+              <View style={styles.menuDivider} />
+              <MenuRow
+                icon={<Svg width={20} height={20} viewBox="0 0 24 24" fill="none"><Path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="#D94F4F" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" /></Svg>}
+                label="Log Out"
+                onPress={handleLogout}
+                danger
+              />
+            </>
+          )}
         </View>
 
         <Text style={styles.version}>Bookam v1.0.0</Text>
@@ -155,6 +189,20 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05, shadowRadius: 8, elevation: 3,
   },
+  guestCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#F8F5FA', borderRadius: 16,
+    padding: 16, marginBottom: 16, gap: 12,
+    borderWidth: 1, borderColor: '#F0E6FA',
+  },
+  guestIconWrap: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center',
+  },
+  guestTitle: { fontSize: 15, fontFamily: 'Poppins-SemiBold', fontWeight: '600', color: '#1E1E1E', marginBottom: 2 },
+  guestSub: { fontSize: 12.5, fontFamily: 'Poppins-Regular', color: '#6B6478' },
+  guestSignInBtn: { backgroundColor: '#6B2D82', paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, flexShrink: 0 },
+  guestSignInText: { color: '#FFFFFF', fontSize: 13, fontFamily: 'Poppins-SemiBold', fontWeight: '600' },
   avatarWrap: {},
   userInfo: { flex: 1, gap: 2 },
   userName: { fontSize: 16, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E' },
