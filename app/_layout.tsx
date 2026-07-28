@@ -60,13 +60,6 @@ export default function RootLayout() {
         router.replace('/tabs/home');
       } else {
         const onboarded = await AsyncStorage.getItem('bookam_onboarded');
-        // Not logged in no longer means forced to the login screen -
-        // browsing properties should be free, same as any real booking
-        // app (Airbnb, Booking.com). Login is only required for actions
-        // that genuinely need an account: saving a property or booking
-        // one - both already prompt for that at the moment they're
-        // attempted, with a clear explanation rather than a silent
-        // redirect.
         if (onboarded) {
           router.replace('/tabs/home');
         } else {

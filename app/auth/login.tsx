@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TextInput,
   TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle, Rect, Polyline } from 'react-native-svg';
@@ -13,6 +13,7 @@ import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
 import { RateLimiter } from '../../lib/security';
 import { signInWithGoogle } from '../../lib/googleAuth';
+import { goToPostAuthDestination } from '../../lib/authNavigation';
 
 function GoogleIcon() {
   return (
@@ -26,6 +27,7 @@ function GoogleIcon() {
 }
 
 export default function LoginScreen() {
+  const params = useLocalSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -48,13 +50,14 @@ export default function LoginScreen() {
         return;
       }
       toast.success('Welcome back!', 'You are now logged in.');
-      // Always explicitly go to home — no ambiguity. router.canGoBack()
-      // + router.back() used to be here, but canGoBack() can evaluate
-      // true due to how Expo Router's nested (auth) group stack retains
-      // its own internal history, so back() was returning WITHIN the
-      // auth flow instead of actually leaving it. After a successful
-      // sign-in there is only one correct destination.
-      router.replace('/tabs/home');
+      // router.canGoBack() + router.back() used to be here, but
+      // canGoBack() can evaluate true due to how Expo Router's nested
+      // (auth) group stack retains its own internal history, so
+      // back() was returning WITHIN the auth flow instead of actually
+      // leaving it. goToPostAuthDestination handles the "where should
+      // this actually go" decision instead - Home by default, or
+      // wherever the person was trying to go before being sent here.
+      goToPostAuthDestination(params as any);
     } finally {
       setGoogleLoading(false);
     }
@@ -73,7 +76,7 @@ export default function LoginScreen() {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
       toast.success('Welcome back!', 'You are now logged in.');
-      router.replace('/tabs/home');
+      goToPostAuthDestination(params as any);
     } catch (e: any) {
       toast.error('Login failed', e.message || 'Incorrect email or password.');
     } finally { setLoading(false); }

@@ -48,16 +48,18 @@ export default function ProfileScreen() {
     await supabase.auth.signOut();
   };
 
-  // Shows a clear reason before sending a guest to sign in, rather
-  // than silently redirecting with no explanation - same pattern
-  // already used when a guest tries to save or book a property.
-  const requireAuth = (actionLabel: string, onAuthenticated: () => void) => {
+  // Shows a clear reason before sending a guest to sign in, and
+  // carries the intended destination through so a successful login
+  // lands them exactly where they were trying to go - not dumped on
+  // Home having to navigate back to Saved Properties (or wherever)
+  // themselves.
+  const requireAuth = (actionLabel: string, destination: string) => {
     if (user) {
-      onAuthenticated();
+      router.push(destination as any);
       return;
     }
     toast.info('Sign in required', `Please sign in to ${actionLabel}.`);
-    router.push('/auth/login');
+    router.push({ pathname: '/auth/login', params: { returnTo: destination } });
   };
 
   return (
@@ -131,19 +133,19 @@ export default function ProfileScreen() {
           <MenuRow
             icon={<Svg width={20} height={20} viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="7" r="4" stroke="#6B2D82" strokeWidth={1.8} /><Path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" stroke="#6B2D82" strokeWidth={1.8} strokeLinecap="round" /></Svg>}
             label="Edit Profile"
-            onPress={() => requireAuth('edit your profile', () => router.push('/profile/edit-profile'))}
+            onPress={() => requireAuth('edit your profile', '/profile/edit-profile')}
           />
           <View style={styles.menuDivider} />
           <MenuRow
             icon={<Svg width={20} height={20} viewBox="0 0 24 24" fill="none"><Path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke="#6B2D82" strokeWidth={1.8} /></Svg>}
             label="Saved Properties"
-            onPress={() => requireAuth('view your saved properties', () => router.push('/profile/saved-properties'))}
+            onPress={() => requireAuth('view your saved properties', '/profile/saved-properties')}
           />
           <View style={styles.menuDivider} />
           <MenuRow
             icon={<Svg width={20} height={20} viewBox="0 0 24 24" fill="none"><Path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="#6B2D82" strokeWidth={1.8} strokeLinecap="round" /></Svg>}
             label="Notification Settings"
-            onPress={() => requireAuth('manage notification settings', () => router.push('/profile/notification-settings'))}
+            onPress={() => requireAuth('manage notification settings', '/profile/notification-settings')}
           />
           <View style={styles.menuDivider} />
           <MenuRow

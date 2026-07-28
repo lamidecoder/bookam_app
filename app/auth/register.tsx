@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TextInput,
   TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle, Rect, Polyline } from 'react-native-svg';
@@ -13,6 +13,7 @@ import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
 import { signInWithGoogle } from '../../lib/googleAuth';
 import { RateLimiter } from '../../lib/security';
+import { goToPostAuthDestination, extractReturnParams } from '../../lib/authNavigation';
 import { Linking } from 'react-native';
 
 const TERMS_URL = 'https://bookamfast.com/terms';
@@ -31,6 +32,7 @@ function GoogleIcon() {
 }
 
 export default function RegisterScreen() {
+  const params = useLocalSearchParams();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,7 +71,7 @@ export default function RegisterScreen() {
       // sitting underneath — going back there after signing in would be
       // confusing either way (new account or existing one) - moving
       // forward to Home is correct in both cases.
-      router.replace('/tabs/home');
+      goToPostAuthDestination(params as any);
     } finally {
       setGoogleLoading(false);
     }
@@ -122,7 +124,7 @@ export default function RegisterScreen() {
       // auth.uid() is null and RLS silently blocks the insert - no error
       // shown, no profile ever created. It's created in otp-verify.tsx
       // right after verifyOtp() succeeds, when a real session exists.
-      router.push({ pathname: '/auth/otp-verify', params: { email, fullName } });
+      router.push({ pathname: '/auth/otp-verify', params: { email, fullName, ...extractReturnParams(params) } });
     } catch (e: any) {
       toast.error('Registration failed', e.message || 'Please try again.');
     } finally { setLoading(false); }

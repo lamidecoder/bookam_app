@@ -13,6 +13,7 @@ import { OtpInput } from '../../components/ui/OtpInput';
 import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
 import { RateLimiter } from '../../lib/security';
+import { goToPostAuthDestination } from '../../lib/authNavigation';
 
 export default function OTPVerifyScreen() {
   const params = useLocalSearchParams();
@@ -74,7 +75,7 @@ export default function OTPVerifyScreen() {
       }
 
       toast.success('Email verified!', 'Your account is ready to go.');
-      router.replace('/tabs/home');
+      goToPostAuthDestination(params as any);
     } catch (e: any) {
       toast.error('Invalid code', 'The code is incorrect or expired.');
     } finally { setLoading(false); }

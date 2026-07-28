@@ -10,6 +10,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { ForceSignInSheet } from '../../components/ui/ForceSignInSheet';
 import { useToast } from '../../components/ui/ToastContext';
 import { useAuth } from '../../hooks/useAuth';
 import { getProperty, getUnavailableDates, getPropertyReviews, toggleSavedProperty, getSavedPropertyIds } from '../../lib/api';
@@ -88,6 +89,8 @@ export default function PropertyDetailScreen() {
   const [selectedCheckIn, setSelectedCheckIn] = useState<string | null>(null);
   const [selectedCheckOut, setSelectedCheckOut] = useState<string | null>(null);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [showForceSignIn, setShowForceSignIn] = useState(false);
+  const [signInMessage, setSignInMessage] = useState('');
 
   useEffect(() => {
     if (!propertyId) { setLoading(false); return; }
@@ -179,8 +182,8 @@ export default function PropertyDetailScreen() {
 
   const handleToggleSave = async () => {
     if (!user) {
-      toast.info('Sign in required', 'Please sign in to save this property.');
-      router.push('/auth/login');
+      setSignInMessage('You need an account to save properties. Your selection will be saved.');
+      setShowForceSignIn(true);
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -204,9 +207,8 @@ export default function PropertyDetailScreen() {
       return;
     }
     if (!user) {
-      // Force Sign In flow
-      toast.info('Sign in required', 'Please log in to continue booking.');
-      router.push('/auth/login');
+      setSignInMessage('You need an account to complete your booking. Your selected dates will be saved.');
+      setShowForceSignIn(true);
       return;
     }
     router.push({
@@ -546,6 +548,16 @@ export default function PropertyDetailScreen() {
         </TouchableOpacity>
       </View>
 
+      <ForceSignInSheet
+        visible={showForceSignIn}
+        onDismiss={() => setShowForceSignIn(false)}
+        message={signInMessage}
+        returnParams={{
+          returnToProperty: propertyId,
+          returnCheckIn: selectedCheckIn || '',
+          returnCheckOut: selectedCheckOut || '',
+        }}
+      />
     </View>
   );
 }

@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, Dimensions,
   TouchableOpacity, Image, ViewToken, Animated,
-  Platform, StatusBar as RNStatusBar,
+  Platform, StatusBar as RNStatusBar, Easing,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -62,8 +62,15 @@ export default function OnboardingScreen() {
 
     const timer = setTimeout(() => {
       Animated.parallel([
-        Animated.timing(splashOpacity, { toValue: 0, duration: 600, useNativeDriver: true }),
-        Animated.timing(slidesOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(splashOpacity, { toValue: 0, duration: 650, useNativeDriver: true }),
+        Animated.timing(slidesOpacity, { toValue: 1, duration: 650, useNativeDriver: true }),
+        // The zoom-through itself - logo keeps growing past its resting
+        // size of 1.0 right as the splash fades away, giving the sense
+        // of the screen zooming in through the logo into the app,
+        // rather than the logo just sitting static while a flat
+        // opacity crossfade happens around it. Eased out so it feels
+        // like it's accelerating away rather than a linear scale.
+        Animated.timing(logoScale, { toValue: 2.2, duration: 650, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
       ]).start(() => setShowSplash(false));
     }, 2200);
     return () => clearTimeout(timer);
