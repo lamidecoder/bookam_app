@@ -18,7 +18,6 @@ function CancelSheet({
   visible,
   propertyName,
   checkIn,
-  cancellationFee,
   total,
   onKeep,
   onConfirm,
@@ -27,14 +26,11 @@ function CancelSheet({
   visible: boolean;
   propertyName: string;
   checkIn: string;
-  cancellationFee: number;
   total: number;
   onKeep: () => void;
   onConfirm: () => void;
   loading: boolean;
 }) {
-  const refundAmount = total - cancellationFee;
-
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onKeep}>
       <TouchableWithoutFeedback onPress={onKeep}>
@@ -62,18 +58,9 @@ function CancelSheet({
         {/* Refund breakdown */}
         <View style={sheet.breakdown}>
           <View style={sheet.row}>
-            <Text style={sheet.rowLabel}>Amount Paid</Text>
-            <Text style={sheet.rowValue}>₦{total.toLocaleString()}</Text>
-          </View>
-          <View style={sheet.row}>
-            <Text style={[sheet.rowLabel, { color: '#D94F4F' }]}>Cancellation Fee</Text>
-            <Text style={[sheet.rowValue, { color: '#D94F4F' }]}>-₦{cancellationFee.toLocaleString()}</Text>
-          </View>
-          <View style={sheet.divider} />
-          <View style={sheet.row}>
             <Text style={[sheet.rowLabel, { fontFamily: 'Poppins-Bold', color: '#1E1E1E' }]}>Refund Amount</Text>
             <Text style={[sheet.rowValue, { color: '#2E9E6B', fontFamily: 'Poppins-Bold' }]}>
-              ₦{Math.max(0, refundAmount).toLocaleString()}
+              ₦{total.toLocaleString()}
             </Text>
           </View>
         </View>
@@ -143,7 +130,6 @@ export default function BookingDetailActiveScreen() {
   const nights = booking?.nights ?? (Number(params.nights) || 1);
   const total = booking?.total ?? (Number(params.total) || 0);
   const serviceFee = booking?.service_fee ?? (Number(params.serviceFee) || 0);
-  const cancellationFee = booking?.cancellation_fee ?? (Number(params.cancellationFee) || 0);
   const nightlyRate = nights > 0 ? Math.round((total - serviceFee) / nights) : 0;
   const ref = booking?.payment_ref || (params.ref as string) || bookingId?.slice(0, 12).toUpperCase() || '';
   const bookingStatus = booking?.status || 'confirmed';
@@ -327,7 +313,7 @@ export default function BookingDetailActiveScreen() {
           </TouchableOpacity>
 
           <Text style={styles.refundNote}>
-            Cancellation fees apply per the property policy. Tap Cancel Booking to see your exact refund.
+            Cancelling refunds the full amount paid. Refunds are processed within 3–5 business days.
           </Text>
 
           <View style={{ height: 100 }} />
@@ -344,7 +330,6 @@ export default function BookingDetailActiveScreen() {
         visible={showCancelSheet}
         propertyName={propertyName}
         checkIn={checkIn}
-        cancellationFee={cancellationFee}
         total={total}
         onKeep={() => setShowCancelSheet(false)}
         onConfirm={confirmCancel}

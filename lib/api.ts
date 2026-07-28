@@ -183,7 +183,7 @@ export function subscribeToProperties(callback: (properties: any[]) => void) {
 export async function getUserBookings(userId: string) {
   const { data, error } = await supabase
     .from('bookings')
-    .select(`*, properties(name, location, area, images, type, cancellation_fee_percent)`)
+    .select(`*, properties(name, location, area, images, type)`)
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -193,7 +193,7 @@ export async function getUserBookings(userId: string) {
 export async function getBookingById(bookingId: string) {
   const { data, error } = await supabase
     .from('bookings')
-    .select(`*, properties(name, location, area, images, type, cancellation_fee_percent)`)
+    .select(`*, properties(name, location, area, images, type)`)
     .eq('id', bookingId)
     .single();
   if (error) throw error;
@@ -210,7 +210,6 @@ export async function createBooking(booking: {
   nightly_rate: number;
   service_fee: number;
   total: number;
-  cancellation_fee: number;
   caution_fee?: number;
 }) {
   // Real overlap check right before creating the booking - the

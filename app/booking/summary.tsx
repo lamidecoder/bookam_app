@@ -61,13 +61,12 @@ function Checkbox({ checked, onToggle, label }: { checked: boolean; onToggle: ()
 export default function BookingSummaryScreen() {
   const params = useLocalSearchParams();
   const { user, profile } = useAuth();
-  const [checkedCancel, setCheckedCancel] = useState(false);
   const [checkedTerms, setCheckedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
   const toast = useToast();
 
-  const canProceed = checkedCancel && checkedTerms;
+  const canProceed = checkedTerms;
 
   const getInitials = () => {
     if (profile?.full_name) {
@@ -90,7 +89,6 @@ export default function BookingSummaryScreen() {
     total: Number(params.total) || 0,
     guestName: profile?.full_name || user?.email || 'Guest',
     guestPhone: profile?.phone || '',
-    cancellationFee: Number(params.cancellationFee) || 0,
     cautionFee: Number(params.cautionFee) || 0,
     guests: Number(params.guests) || 1,
   };
@@ -143,7 +141,6 @@ export default function BookingSummaryScreen() {
         nightly_rate: booking.nightlyRate,
         service_fee: booking.serviceFee,
         total: booking.total,
-        cancellation_fee: booking.cancellationFee,
         caution_fee: booking.cautionFee,
       });
 
@@ -266,16 +263,6 @@ export default function BookingSummaryScreen() {
         <View style={{ height: 20 }} />
 
         {/* Checkboxes */}
-        <Checkbox
-          checked={checkedCancel}
-          onToggle={() => setCheckedCancel(v => !v)}
-          label={
-            <Text style={styles.checkLabel}>
-              I have read and accept the cancellation terms for this property.
-            </Text>
-          }
-        />
-        <View style={{ height: 14 }} />
         <Checkbox
           checked={checkedTerms}
           onToggle={() => setCheckedTerms(v => !v)}

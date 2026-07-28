@@ -201,11 +201,6 @@ export default function PropertyDetailScreen() {
       toast.warning('Select dates', 'Please select check-in and check-out dates.');
       return;
     }
-    const minStay = property.min_stay || 1;
-    if (nights < minStay) {
-      toast.warning('Minimum stay required', `This property requires a minimum stay of ${minStay} night${minStay > 1 ? 's' : ''}.`);
-      return;
-    }
     if (!user) {
       setSignInMessage('You need an account to complete your booking. Your selected dates will be saved.');
       setShowForceSignIn(true);
@@ -224,7 +219,6 @@ export default function PropertyDetailScreen() {
         nightlyRate,
         serviceFee,
         total,
-        cancellationFee: Math.round((nightlyRate * nights * (property.cancellation_fee_percent || 15)) / 100),
         cautionFee: property.caution_fee || 0,
         guests: 1,
       },
@@ -423,19 +417,9 @@ export default function PropertyDetailScreen() {
             </>
           )}
 
-          {property.booking_policy ? (
-            <>
-              <View style={{ height: 14 }} />
-              <View style={styles.policyCard}>
-                <Text style={styles.policyTitle}>Booking &amp; Cancellation Policy</Text>
-                <Text style={styles.policyText}>{property.booking_policy}</Text>
-              </View>
-            </>
-          ) : null}
-
           {property.caution_fee > 0 ? (
             <>
-              <View style={{ height: 10 }} />
+              <View style={{ height: 14 }} />
               <View style={styles.infoBanner}>
                 <View style={styles.infoBannerBar} />
                 <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" style={{ marginTop: 1 }}>
@@ -601,15 +585,12 @@ const styles = StyleSheet.create({
   ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   ruleCheck: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFF8E7', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#C9A84C' },
   ruleText: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#1E1E1E', flex: 1, flexWrap: 'wrap' },
-  policyCard: { backgroundColor: '#F8F5FA', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#F0EBF8' },
   reviewCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#F0EBF8', marginTop: 10 },
   reviewCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
   reviewerName: { fontSize: 14, fontFamily: 'Poppins-SemiBold', fontWeight: '600', color: '#1E1E1E' },
   reviewStars: { flexDirection: 'row', gap: 2 },
   reviewBody: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#6B6478', lineHeight: 19, marginBottom: 6 },
   reviewDate: { fontSize: 11, fontFamily: 'Poppins-Regular', color: '#B3ABC0' },
-  policyTitle: { fontSize: 14, fontFamily: 'Poppins-SemiBold', fontWeight: '600', color: '#1E1E1E', marginBottom: 6 },
-  policyText: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#6B6478', lineHeight: 19 },
   infoBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: '#EFF6FF', borderRadius: 10, padding: 14, overflow: 'hidden' },
   infoBannerBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: '#3A7BD5' },
   infoBannerText: { flex: 1, fontSize: 13, fontFamily: 'Poppins-Regular', color: '#1E40AF', lineHeight: 20 },
