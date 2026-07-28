@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 
 /**
@@ -31,19 +31,33 @@ export function CharacterAvatar({
   size?: number;
 }) {
   const seed = id && AVATAR_CHARACTERS.includes(id as any) ? id : AVATAR_CHARACTERS[0];
+  const [failed, setFailed] = useState(false);
 
   return (
     <View style={[styles.wrap, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Image
-        source={{ uri: avatarUrl(seed, size) }}
-        style={{ width: size, height: size }}
-        contentFit="cover"
-        transition={150}
-      />
+      {failed ? (
+        // Falls back to a plain letter if the remote avatar genuinely
+        // fails to load (no internet reaching DiceBear, etc.) - better
+        // than a blank or broken-image box.
+        <View style={[styles.fallback, { width: size, height: size }]}>
+          <Text style={{ fontSize: size * 0.4, fontFamily: 'Poppins-Bold', fontWeight: '700', color: '#6B2D82' }}>
+            {seed[0]}
+          </Text>
+        </View>
+      ) : (
+        <Image
+          source={{ uri: avatarUrl(seed, size) }}
+          style={{ width: size, height: size }}
+          contentFit="cover"
+          transition={150}
+          onError={() => setFailed(true)}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { overflow: 'hidden', backgroundColor: '#F5F0FA' },
+  fallback: { alignItems: 'center', justifyContent: 'center' },
 });

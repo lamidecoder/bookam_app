@@ -13,7 +13,6 @@ import { useToast } from '../../components/ui/ToastContext';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
 import { submitReview, getBookingById } from '../../lib/api';
-import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
 function StarRating({ rating, onRate }: { rating: number; onRate: (r: number) => void }) {
   return (
@@ -236,7 +235,6 @@ export default function BookingDetailReviewScreen() {
       </ScrollView>
 
       {/* Floating support buttons */}
-      <FloatingSupportButtons />
     </SafeAreaView>
   );
 }

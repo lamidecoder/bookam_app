@@ -116,6 +116,20 @@ export default function PropertyDetailScreen() {
     })();
   }, [propertyId, user]);
 
+  // Keeps the availability calendar accurate while someone's actively
+  // browsing this property - someone else could book the exact dates
+  // being considered here in the meantime. Silent by design: no
+  // loading state, no visual disruption, just a background correction
+  // every 60 seconds. The one-time load above already covers the
+  // initial view; this only matters for someone lingering on the page.
+  useEffect(() => {
+    if (!propertyId) return;
+    const interval = setInterval(() => {
+      getUnavailableDates(propertyId).then(setBlockedDates).catch(() => {});
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [propertyId]);
+
   const weeks = useMemo(() => buildCalendarGrid(viewYear, viewMonth), [viewYear, viewMonth]);
 
   const isPastDate = (day: number) => {

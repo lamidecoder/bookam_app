@@ -34,18 +34,26 @@ export function useAuth() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        loadAndSyncProfile(session.user.id, session.user.email).then((p) => { if (p) setProfile(p); });
+        const fresh = await loadAndSyncProfile(session.user.id, session.user.email);
+        if (fresh) setProfile(fresh);
       }
+      // Only marked done once the profile is actually ready (or
+      // genuinely doesn't exist) - previously fired right alongside
+      // the profile fetch instead of after it, so every screen gating
+      // its skeleton on this flag would briefly flash fallback content
+      // (Guest, JD, etc) in the gap between the skeleton disappearing
+      // and the real profile data actually arriving.
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        loadAndSyncProfile(session.user.id, session.user.email).then((p) => { if (p) setProfile(p); });
+        const fresh = await loadAndSyncProfile(session.user.id, session.user.email);
+        if (fresh) setProfile(fresh);
       } else {
         setProfile(null);
       }

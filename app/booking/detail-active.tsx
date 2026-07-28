@@ -12,7 +12,6 @@ import { Image } from 'expo-image';
 import { useToast } from '../../components/ui/ToastContext';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { cancelBooking, getBookingById } from '../../lib/api';
-import { FloatingSupportButtons } from '../../components/ui/FloatingSupportButtons';
 
 function CancelSheet({
   visible,
@@ -323,7 +322,6 @@ export default function BookingDetailActiveScreen() {
       </ScrollView>
 
       {/* Floating support buttons */}
-      <FloatingSupportButtons />
 
       {/* Cancel confirmation sheet */}
       <CancelSheet
