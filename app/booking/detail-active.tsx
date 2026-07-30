@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Clipboard, Modal,
-  Animated, TouchableWithoutFeedback,
+  Animated, TouchableWithoutFeedback, Share,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -150,6 +150,17 @@ export default function BookingDetailActiveScreen() {
     setShowCancelSheet(true);
   };
 
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `My stay at ${propertyName}\nCheck-in: ${checkIn}\nCheck-out: ${checkOut}\nBooking Ref: ${ref}\n\nBooked via Bookam.`,
+      });
+    } catch (e) {
+      // User cancelling the share sheet also lands here - not worth
+      // surfacing as an error, that's just them closing it.
+    }
+  };
+
   const confirmCancel = async () => {
     setCancelLoading(true);
     try {
@@ -177,7 +188,7 @@ export default function BookingDetailActiveScreen() {
           </Svg>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Booking Detail</Text>
-        <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={handleShare}>
           <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
             <Circle cx="18" cy="5" r="3" stroke="#1E1E1E" strokeWidth={1.8} />
             <Circle cx="6" cy="12" r="3" stroke="#1E1E1E" strokeWidth={1.8} />
@@ -398,7 +409,7 @@ const styles = StyleSheet.create({
   verifiedIcon: { fontSize: 14 },
   verifiedText: { fontSize: 11, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#C9A84C' },
   content: { paddingHorizontal: 20, paddingTop: 20 },
-  nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
   propertyName: { fontSize: 22, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E', flex: 1 },
   typeBadge: { backgroundColor: '#F0E6FA', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
   typeText: { fontSize: 12, fontFamily: 'Poppins-SemiBold', color: '#6B2D82', fontWeight: '600' },
@@ -416,7 +427,7 @@ const styles = StyleSheet.create({
   stayRowValue: { fontSize: 13, fontFamily: 'Poppins-Medium', color: '#1E1E1E', fontWeight: '500' },
   stayTotalLabel: { fontSize: 15, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E' },
   stayTotalValue: { fontSize: 18, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#6B2D82' },
-  metaRows: { gap: 16, marginBottom: 24, paddingRight: 64 },
+  metaRows: { gap: 16, marginBottom: 24 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   metaLabel: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#6B6478' },
   metaValue: { fontSize: 13, fontFamily: 'Poppins-Medium', color: '#1E1E1E', fontWeight: '500' },

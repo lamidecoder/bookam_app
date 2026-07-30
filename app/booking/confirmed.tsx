@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32,
   },
   propertyPhoto: { width: '100%', height: 160, borderRadius: 14, marginBottom: 14, backgroundColor: '#F0EBF8' },
-  propertyRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  propertyRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
   propertyName: { fontSize: 18, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E' },
   verifiedBadge: {
     backgroundColor: '#F0FDF6', borderRadius: 20,

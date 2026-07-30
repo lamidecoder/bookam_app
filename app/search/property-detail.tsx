@@ -447,6 +447,16 @@ export default function PropertyDetailScreen() {
             </>
           ) : null}
 
+          {property.booking_policy ? (
+            <>
+              <View style={{ height: 14 }} />
+              <View style={styles.policyCard}>
+                <Text style={styles.policyTitle}>Booking &amp; Cancellation Policy</Text>
+                <Text style={styles.policyText}>{property.booking_policy}</Text>
+              </View>
+            </>
+          ) : null}
+
           {reviews.length > 0 ? (
             <>
               <View style={{ height: 20 }} />
@@ -599,6 +609,9 @@ const styles = StyleSheet.create({
   ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   ruleCheck: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFF8E7', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#C9A84C' },
   ruleText: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#1E1E1E', flex: 1, flexWrap: 'wrap' },
+  policyCard: { backgroundColor: '#F8F5FA', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#F0EBF8' },
+  policyTitle: { fontSize: 14, fontFamily: 'Poppins-SemiBold', fontWeight: '600', color: '#1E1E1E', marginBottom: 6 },
+  policyText: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#6B6478', lineHeight: 19 },
   reviewCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#F0EBF8', marginTop: 10 },
   reviewCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
   reviewerName: { fontSize: 14, fontFamily: 'Poppins-SemiBold', fontWeight: '600', color: '#1E1E1E' },

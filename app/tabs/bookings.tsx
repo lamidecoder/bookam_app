@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Path, Circle } from 'react-native-svg';
+import { Image } from 'expo-image';
 import { BookamLogo } from '../../components/ui/BookamLogo';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { useAuth } from '../../hooks/useAuth';
@@ -201,7 +202,11 @@ export default function BookingsScreen() {
                   {activeTab === 'past' ? (
                     <>
                       <View style={styles.pastImage}>
-                        <Text style={styles.pastEmoji}>🏨</Text>
+                        {property?.images?.[0] ? (
+                          <Image source={{ uri: property.images[0] }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+                        ) : (
+                          <Text style={styles.pastEmoji}>🏨</Text>
+                        )}
                         <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
                           <Text style={[styles.statusText, { color: cfg.text }]}>{cfg.label}</Text>
                         </View>
@@ -254,7 +259,11 @@ export default function BookingsScreen() {
                   ) : (
                     <View style={styles.upcomingCard}>
                       <View style={styles.upcomingImage}>
-                        <Text style={styles.upcomingEmoji}>🏨</Text>
+                        {property?.images?.[0] ? (
+                          <Image source={{ uri: property.images[0] }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+                        ) : (
+                          <Text style={styles.upcomingEmoji}>🏨</Text>
+                        )}
                       </View>
                       <View style={styles.upcomingInfo}>
                         <View style={styles.upcomingTop}>
@@ -305,12 +314,12 @@ const styles = StyleSheet.create({
   cards: { gap: 14 },
   card: { backgroundColor: '#FFFFFF', borderRadius: 16, overflow: 'hidden', shadowColor: '#6B2D82', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
   upcomingCard: { flexDirection: 'row' },
-  upcomingImage: { width: 90, backgroundColor: '#F0EBF8', alignItems: 'center', justifyContent: 'center' },
+  upcomingImage: { width: 90, backgroundColor: '#F0EBF8', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' },
   upcomingEmoji: { fontSize: 32 },
   upcomingInfo: { flex: 1, padding: 14, gap: 6 },
   upcomingTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
   upcomingBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  pastImage: { height: 160, backgroundColor: '#F0EBF8', alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  pastImage: { height: 160, backgroundColor: '#F0EBF8', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' },
   pastEmoji: { fontSize: 56 },
   cardInfo: { padding: 14, gap: 6 },
   cardName: { fontSize: 15, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E', flex: 1 },

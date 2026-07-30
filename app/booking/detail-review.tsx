@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, TextInput, Linking, Animated,
+  TouchableOpacity, TextInput, Linking, Animated, Share,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -76,6 +76,16 @@ export default function BookingDetailReviewScreen() {
     : (params.dates as string || '');
   const guestCount = booking?.guests ?? (Number(params.guestCount) || 1);
 
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `My stay at ${propertyName}\n${dates}\n\nBooked via Bookam.`,
+      });
+    } catch (e) {
+      // User cancelling the share sheet also lands here - not an error.
+    }
+  };
+
   const handleSubmitReview = async () => {
     if (rating === 0) { toast.error('Rating required', 'Please select a star rating.'); return; }
     if (review.trim().length < 10) { toast.error('Review too short', 'Please write at least 10 characters.'); return; }
@@ -123,7 +133,7 @@ export default function BookingDetailReviewScreen() {
               <Path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke="#1E1E1E" strokeWidth={1.8} />
             </Svg>
           </TouchableOpacity>
-          <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={handleShare}>
             <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
               <Circle cx="18" cy="5" r="3" stroke="#1E1E1E" strokeWidth={1.8} />
               <Circle cx="6" cy="12" r="3" stroke="#1E1E1E" strokeWidth={1.8} />
@@ -291,7 +301,7 @@ const styles = StyleSheet.create({
   },
   reviewNote: { fontSize: 12, fontFamily: 'Poppins-Regular', color: '#9E96A8', textAlign: 'center' },
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E', marginBottom: 16 },
-  paymentRows: { gap: 12, marginBottom: 20, paddingRight: 64 },
+  paymentRows: { gap: 12, marginBottom: 20 },
   paymentRow: { flexDirection: 'row', justifyContent: 'space-between' },
   paymentLabel: { fontSize: 14, fontFamily: 'Poppins-Regular', color: '#6B6478' },
   paymentValue: { fontSize: 14, fontFamily: 'Poppins-Medium', color: '#1E1E1E', fontWeight: '500' },
