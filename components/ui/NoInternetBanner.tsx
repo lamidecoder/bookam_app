@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   content: {
-    backgroundColor: '#D94F4F',
+    backgroundColor: '#6B2D82',
     paddingTop: 48,
     paddingBottom: 12,
     paddingHorizontal: 20,
@@ -88,13 +88,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   retryBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: '#C9A84C',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
   },
   retryText: {
-    color: '#FFFFFF',
+    color: '#1E1E1E',
     fontSize: 12,
     fontFamily: 'Poppins-Bold',
     fontWeight: '700',

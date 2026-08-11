@@ -361,10 +361,16 @@ export default function HomeScreen() {
                   onToggleSave={() => handleToggleSave(item.id)}
                 />
               ))}
-              {allProperties.length === 0 && (
+              {allProperties.length === 0 && featured.length === 0 && (
                 <View style={styles.empty}>
                   <Text style={styles.emptyIcon}>🏠</Text>
                   <Text style={styles.emptyText}>No properties found</Text>
+                </View>
+              )}
+              {allProperties.length === 0 && featured.length > 0 && (
+                <View style={styles.empty}>
+                  <Text style={styles.emptyIcon}>✨</Text>
+                  <Text style={styles.emptyText}>You've seen everything — check Featured above</Text>
                 </View>
               )}
             </View>

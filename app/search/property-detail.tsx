@@ -12,6 +12,8 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { ForceSignInSheet } from '../../components/ui/ForceSignInSheet';
 import { useToast } from '../../components/ui/ToastContext';
+import { BookingTipsModal } from '../../components/ui/BookingTipsModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../hooks/useAuth';
 import { getProperty, getUnavailableDates, getPropertyReviews, toggleSavedProperty, getSavedPropertyIds } from '../../lib/api';
 import { optimizedImageUrl } from '../../lib/cloudinary';
@@ -89,6 +91,7 @@ export default function PropertyDetailScreen() {
   const [selectedCheckIn, setSelectedCheckIn] = useState<string | null>(null);
   const [selectedCheckOut, setSelectedCheckOut] = useState<string | null>(null);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [showTips, setShowTips] = useState(false);
   const [showForceSignIn, setShowForceSignIn] = useState(false);
   const [signInMessage, setSignInMessage] = useState('');
 
@@ -193,6 +196,17 @@ export default function PropertyDetailScreen() {
   const serviceFee = property?.service_fee || 0;
   const cautionFeeAmount = property?.caution_fee || 0;
   const total = nights * nightlyRate + serviceFee + cautionFeeAmount;
+
+  useEffect(() => {
+    AsyncStorage.getItem('bookam_seen_booking_tips').then((seen) => {
+      if (!seen) setShowTips(true);
+    });
+  }, []);
+
+  const dismissTips = () => {
+    setShowTips(false);
+    AsyncStorage.setItem('bookam_seen_booking_tips', 'true').catch(() => {});
+  };
 
   const handleToggleSave = async () => {
     if (!user) {
@@ -566,6 +580,8 @@ export default function PropertyDetailScreen() {
           returnCheckOut: selectedCheckOut || '',
         }}
       />
+
+      <BookingTipsModal visible={showTips} onDismiss={dismissTips} />
     </View>
   );
 }

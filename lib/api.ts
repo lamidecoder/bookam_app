@@ -154,7 +154,7 @@ export async function getFeaturedProperties() {
     .eq('verified', true)
     .eq('active', true)
     .order('rating', { ascending: false, nullsFirst: false })
-    .limit(8);
+    .limit(4);
   if (error) throw error;
   return data || [];
 }
