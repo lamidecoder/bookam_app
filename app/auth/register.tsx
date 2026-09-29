@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput,
   TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -12,6 +13,7 @@ import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
 import { signInWithGoogle } from '../../lib/googleAuth';
+import { signInWithApple, isAppleSignInAvailable } from '../../lib/appleAuth';
 import { RateLimiter } from '../../lib/security';
 import { goToPostAuthDestination, extractReturnParams } from '../../lib/authNavigation';
 import { Linking } from 'react-native';
@@ -40,7 +42,38 @@ export default function RegisterScreen() {
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
   const toast = useToast();
+
+  useEffect(() => {
+    isAppleSignInAvailable().then(setAppleAvailable);
+  }, []);
+
+  const handleAppleSignIn = async () => {
+    if (!agreed) {
+      toast.error('Agreement required', 'Please accept the Terms of Service first.');
+      return;
+    }
+    setAppleLoading(true);
+    try {
+      const result = await signInWithApple(true, TERMS_VERSION);
+      if (!result.success) {
+        const failed = result as { success: false; error: string };
+        if (failed.error === 'Sign-in was cancelled.') return;
+        toast.error('Apple sign-in failed', failed.error);
+        return;
+      }
+      if (result.isNewUser) {
+        toast.success('Account created!', 'Welcome to Bookam.');
+      } else {
+        toast.success('Welcome back!', 'You already have an account with Bookam.');
+      }
+      goToPostAuthDestination(params as any);
+    } finally {
+      setAppleLoading(false);
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     if (!agreed) {
@@ -239,6 +272,17 @@ export default function RegisterScreen() {
             <View style={styles.orLine} />
           </View>
 
+          {/* Apple */}
+          {appleAvailable && (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+              cornerRadius={14}
+              style={[styles.appleBtn, appleLoading && { opacity: 0.6 }]}
+              onPress={handleAppleSignIn}
+            />
+          )}
+
           {/* Google */}
           <TouchableOpacity
             style={[styles.googleBtn, googleLoading && { opacity: 0.6 }]}
@@ -287,6 +331,7 @@ const styles = StyleSheet.create({
   orRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 20 },
   orLine: { flex: 1, height: 1, backgroundColor: '#D1C9E8' },
   orText: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#9E96A8', letterSpacing: 0.5 },
+  appleBtn: { width: '100%', height: 52, marginBottom: 14 },
   googleBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     backgroundColor: '#FFFFFF', borderRadius: 14,

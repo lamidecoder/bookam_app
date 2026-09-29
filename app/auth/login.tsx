@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput,
   TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -13,6 +14,7 @@ import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../lib/supabase';
 import { RateLimiter } from '../../lib/security';
 import { signInWithGoogle } from '../../lib/googleAuth';
+import { signInWithApple, isAppleSignInAvailable } from '../../lib/appleAuth';
 import { goToPostAuthDestination } from '../../lib/authNavigation';
 
 function GoogleIcon() {
@@ -33,7 +35,36 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
   const toast = useToast();
+
+  useEffect(() => {
+    isAppleSignInAvailable().then(setAppleAvailable);
+  }, []);
+
+  const handleAppleSignIn = async () => {
+    setAppleLoading(true);
+    try {
+      const result = await signInWithApple(false);
+      if (!result.success) {
+        const failed = result as { success: false; error: string; needsTerms?: boolean };
+        if (failed.needsTerms) {
+          toast.info('One more step', 'Please accept our Terms of Service to create your account.');
+          router.replace('/auth/register');
+          return;
+        }
+        // A quiet cancel shouldn't nag the user with a red error toast.
+        if (failed.error === 'Sign-in was cancelled.') return;
+        toast.error('Apple sign-in failed', failed.error);
+        return;
+      }
+      toast.success('Welcome back!', 'You are now logged in.');
+      goToPostAuthDestination(params as any);
+    } finally {
+      setAppleLoading(false);
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
@@ -156,6 +187,16 @@ export default function LoginScreen() {
             <View style={styles.orLine} />
           </View>
 
+          {appleAvailable && (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+              cornerRadius={14}
+              style={[styles.appleBtn, appleLoading && { opacity: 0.6 }]}
+              onPress={handleAppleSignIn}
+            />
+          )}
+
           <TouchableOpacity
             style={[styles.googleBtn, googleLoading && { opacity: 0.6 }]}
             activeOpacity={0.85}
@@ -195,6 +236,7 @@ const styles = StyleSheet.create({
   orRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 20 },
   orLine: { flex: 1, height: 1, backgroundColor: '#D1C9E8' },
   orText: { fontSize: 13, fontFamily: 'Poppins-Regular', color: '#9E96A8' },
+  appleBtn: { width: '100%', height: 52, marginBottom: 14 },
   googleBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     backgroundColor: '#FFFFFF', borderRadius: 14,

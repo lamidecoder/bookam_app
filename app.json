@@ -28,7 +28,8 @@
         "UIBackgroundModes": [
           "remote-notification"
         ]
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.bookam.app",
@@ -66,7 +67,8 @@
       "expo-web-browser",
       "expo-secure-store",
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true

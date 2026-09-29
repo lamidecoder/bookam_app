@@ -94,21 +94,32 @@ export async function signInWithGoogle(termsAccepted = false, termsVersion = '1.
       return { success: false, error: sessionError.message };
     }
 
-    return _finishSignIn(termsAccepted, termsVersion);
+    return finishOAuthSignIn(termsAccepted, termsVersion);
   } catch (e: any) {
     return { success: false, error: e.message || 'Something went wrong with Google sign-in.' };
   }
 }
 
 /**
- * Consent-aware completion, run with a live session.
+ * Consent-aware completion, run with a live session. Shared by BOTH
+ * Google and Apple sign-in - once a Supabase session exists, the
+ * profile/consent/duplicate-account logic is identical no matter which
+ * provider produced the session, so both funnel through here.
  * - Existing profile -> normal sign-in.
  * - New user + terms accepted -> create profile WITH the consent record.
  * - New user + terms NOT accepted (login-screen path) -> sign out
  *   immediately and refuse: no profile row and no session are kept.
  *   The person is sent to register, where the checkbox is mandatory.
+ *
+ * @param preferredFullName Apple only hands back the user's real name on
+ *   the very FIRST authorization for an Apple ID + app pair, so when it's
+ *   available we pass it here and prefer it over the metadata fallbacks.
  */
-async function _finishSignIn(termsAccepted: boolean, termsVersion: string): Promise<GoogleSignInResult> {
+export async function finishOAuthSignIn(
+  termsAccepted: boolean,
+  termsVersion: string,
+  preferredFullName?: string,
+): Promise<GoogleSignInResult> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: 'Could not retrieve your account. Please try again.' };
 
@@ -159,6 +170,7 @@ async function _finishSignIn(termsAccepted: boolean, termsVersion: string): Prom
   }
 
   const fullName =
+    (preferredFullName && preferredFullName.trim()) ||
     user.user_metadata?.full_name ||
     user.user_metadata?.name ||
     user.email?.split('@')[0] ||
