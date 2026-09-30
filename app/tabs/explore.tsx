@@ -5,32 +5,115 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../components/ui/ToastContext';
 import { searchProperties, subscribeToProperties, getSavedPropertyIds, toggleSavedProperty } from '../../lib/api';
+import { consumePendingFilters } from '../../lib/searchFilters';
 import { optimizedImageUrl } from '../../lib/cloudinary';
 
 const PROPERTY_TYPES = ['All', 'Hotels', 'Shortlets', 'Event Centers'];
 const AREAS = ['Lekki Phase 1', 'Ikoyi', 'Ikeja', 'Ajah', 'Victoria Island', 'Magodo', 'Surulere', 'Banana Island'];
 const AMENITIES = [
-  { id: 'WiFi', label: 'WiFi', icon: '📶' },
-  { id: 'Parking', label: 'Parking', icon: '🅿️' },
-  { id: 'Pool', label: 'Pool', icon: '🏊' },
-  { id: 'Generator', label: 'Generator', icon: '⚡' },
-  { id: 'AC', label: 'AC', icon: '❄️' },
-  { id: 'TV', label: 'TV', icon: '📺' },
-  { id: 'Kitchen', label: 'Kitchen', icon: '🍳' },
-  { id: 'Security', label: 'Security', icon: '🛡️' },
+  { id: 'WiFi', label: 'WiFi' },
+  { id: 'Parking', label: 'Parking' },
+  { id: 'Pool', label: 'Pool' },
+  { id: 'Generator', label: 'Generator' },
+  { id: 'AC', label: 'AC' },
+  { id: 'TV', label: 'TV' },
+  { id: 'Kitchen', label: 'Kitchen' },
+  { id: 'Security', label: 'Security' },
 ];
+
+// Monochrome line icons for the amenity grid - replaces the coloured
+// emoji so the whole search tab reads as one clean black-and-white set.
+// Colour is passed in (white when the chip is active, muted grey when not).
+function AmenityIcon({ id, color }: { id: string; color: string }) {
+  const p = { stroke: color, strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' as const };
+  switch (id) {
+    case 'WiFi':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M5 12.5a10 10 0 0114 0" {...p} />
+          <Path d="M8.5 15.5a5 5 0 017 0" {...p} />
+          <Circle cx="12" cy="19" r="1.1" fill={color} />
+        </Svg>
+      );
+    case 'Parking':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M5.5 11l1.4-4.2A2 2 0 018.8 5.5h6.4a2 2 0 011.9 1.3L18.5 11" {...p} />
+          <Rect x="3.5" y="11" width="17" height="6" rx="1.6" {...p} />
+          <Circle cx="7.5" cy="17.5" r="1.4" {...p} />
+          <Circle cx="16.5" cy="17.5" r="1.4" {...p} />
+        </Svg>
+      );
+    case 'Pool':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M3 15.5c1.8 0 1.8-1.3 3.6-1.3s1.8 1.3 3.6 1.3 1.8-1.3 3.6-1.3 1.8 1.3 3.6 1.3" {...p} />
+          <Path d="M3 19.5c1.8 0 1.8-1.3 3.6-1.3s1.8 1.3 3.6 1.3 1.8-1.3 3.6-1.3 1.8 1.3 3.6 1.3" {...p} />
+          <Path d="M8 12V6.5a2 2 0 014 0M8 9h4" {...p} />
+        </Svg>
+      );
+    case 'Generator':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke={color} strokeWidth={1.7} strokeLinejoin="round" fill="none" />
+        </Svg>
+      );
+    case 'AC':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M12 2v20M4.5 6l15 12M19.5 6l-15 12" {...p} />
+          <Path d="M12 5l-2.2 2M12 5l2.2 2M12 19l-2.2-2M12 19l2.2-2" {...p} />
+        </Svg>
+      );
+    case 'TV':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Rect x="3" y="5" width="18" height="12" rx="2" {...p} />
+          <Path d="M8 21h8M12 17v4" {...p} />
+        </Svg>
+      );
+    case 'Kitchen':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M7 3v6a2 2 0 002 2M9 3v8m0 0v10M7 3v4" {...p} />
+          <Path d="M16.5 3c-1.4 0-2.2 2.2-2.2 4.5s.8 3.5 2.2 3.5v10" {...p} />
+        </Svg>
+      );
+    case 'Security':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M12 3l7 3v5c0 4.4-3 7.5-7 9-4-1.5-7-4.6-7-9V6l7-3z" {...p} />
+          <Path d="M9 12l2 2 4-4.5" {...p} />
+        </Svg>
+      );
+    default:
+      return null;
+  }
+}
+
+// Small solid star for the rating pill - black, not the multicolour emoji.
+function StarIcon({ size = 13, color = '#1E1E1E' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.3 6.8 19l1-5.8L3.6 9.1l5.8-.8L12 3z" fill={color} />
+    </Svg>
+  );
+}
 
 function VerifiedBadge() {
   return (
     <View style={styles.verifiedBadge}>
-      <Text style={styles.verifiedIcon}>🏅</Text>
+      <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+        <Circle cx="12" cy="12" r="9" stroke="#FFFFFF" strokeWidth={2} />
+        <Path d="M8 12l2.5 2.5L16 9" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </Svg>
       <Text style={styles.verifiedText}>VERIFIED</Text>
     </View>
   );
@@ -44,11 +127,34 @@ export default function ExploreScreen() {
   const [activeAreas, setActiveAreas] = useState<string[]>([]);
   const [activeAmenities, setActiveAmenities] = useState<string[]>([]);
   const [guests, setGuests] = useState(1);
+  // Advanced filters set from the Refine Search screen. priceMax 0 means
+  // "no cap"; minRating 0 means "any".
+  const [priceMin, setPriceMin] = useState(0);
+  const [priceMax, setPriceMax] = useState(0);
+  const [minRating, setMinRating] = useState(0);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const requestId = React.useRef(0);
+
+  // When the user applies filters on the Refine Search screen and comes
+  // back, pick them up and apply them to the live query. Consumed once so
+  // they don't silently re-apply on every future focus.
+  useFocusEffect(
+    useCallback(() => {
+      const f = consumePendingFilters();
+      if (!f) return;
+      setActiveType(f.type ? `${f.type}s` : 'All');
+      setActiveAreas(f.areas);
+      setActiveAmenities(f.amenities);
+      setPriceMin(f.minPrice);
+      setPriceMax(f.maxPrice);
+      setMinRating(f.minRating);
+      setVerifiedOnly(f.verifiedOnly);
+    }, [])
+  );
 
   const toggleArea = (area: string) =>
     setActiveAreas(prev => prev.includes(area) ? prev.filter(a => a !== area) : [...prev, area]);
@@ -73,6 +179,10 @@ export default function ExploreScreen() {
         areas: activeAreas.length ? activeAreas : undefined,
         amenities: activeAmenities.length ? activeAmenities : undefined,
         guests,
+        minPrice: priceMin > 0 ? priceMin : undefined,
+        maxPrice: priceMax > 0 ? priceMax : undefined,
+        minRating: minRating > 0 ? minRating : undefined,
+        verifiedOnly: verifiedOnly || undefined,
       });
       // Ignore stale responses — only apply if this is still the latest request
       if (thisRequestId === requestId.current) {
@@ -89,20 +199,27 @@ export default function ExploreScreen() {
         setLoading(false);
       }
     }
-  }, [search, activeType, activeAreas, activeAmenities, guests]);
+  }, [search, activeType, activeAreas, activeAmenities, guests, priceMin, priceMax, minRating, verifiedOnly]);
 
   useEffect(() => {
-    const debounce = setTimeout(runSearch, 400);
+    const debounce = setTimeout(runSearch, 300);
     return () => clearTimeout(debounce);
   }, [runSearch]);
 
-  // Real-time — if a property is added, edited, or deactivated while
-  // this screen is open, re-run whatever search/filters are currently
-  // active so results stay live without needing a manual pull-to-refresh.
+  // Always-current reference to runSearch so the realtime subscription can
+  // call the latest version without being torn down and recreated.
+  const runSearchRef = React.useRef(runSearch);
+  runSearchRef.current = runSearch;
+
+  // Real-time — if a property is added, edited, or deactivated while this
+  // screen is open, re-run the current search. Subscribe ONCE on mount:
+  // previously this effect depended on runSearch, so every keystroke tore
+  // down and re-opened the realtime channel, which added real lag while
+  // typing. Now the channel is stable and just calls the latest search.
   useEffect(() => {
-    const sub = subscribeToProperties(() => { runSearch(); });
+    const sub = subscribeToProperties(() => { runSearchRef.current(); });
     return () => { sub.unsubscribe(); };
-  }, [runSearch]);
+  }, []);
 
   const handleToggleSave = async (propertyId: string) => {
     if (!user) {
@@ -151,7 +268,7 @@ export default function ExploreScreen() {
           <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
             <Path d="M4 6h16M7 12h10M10 18h4" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" />
           </Svg>
-          {(activeAreas.length > 0 || activeAmenities.length > 0) && <View style={styles.filterDot} />}
+          {(activeAreas.length > 0 || activeAmenities.length > 0 || priceMin > 0 || priceMax > 0 || minRating > 0 || verifiedOnly) && <View style={styles.filterDot} />}
         </TouchableOpacity>
       </View>
 
@@ -202,7 +319,7 @@ export default function ExploreScreen() {
               style={[styles.amenityItem, activeAmenities.includes(a.id) && styles.amenityItemActive]}
               onPress={() => toggleAmenity(a.id)}
             >
-              <Text style={styles.amenityIcon}>{a.icon}</Text>
+              <AmenityIcon id={a.id} color={activeAmenities.includes(a.id) ? '#FFFFFF' : '#6B6478'} />
               <Text style={[styles.amenityLabel, activeAmenities.includes(a.id) && styles.amenityLabelActive]}>{a.label}</Text>
             </TouchableOpacity>
           ))}
@@ -218,7 +335,10 @@ export default function ExploreScreen() {
           <ActivityIndicator size="large" color="#6B2D82" style={{ marginTop: 40 }} />
         ) : error ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>⚠️</Text>
+            <Svg width={44} height={44} viewBox="0 0 24 24" fill="none" style={{ marginBottom: 4 }}>
+              <Path d="M12 3L2 20h20L12 3z" stroke="#9E96A8" strokeWidth={1.6} strokeLinejoin="round" />
+              <Path d="M12 10v4M12 17.5v.01" stroke="#9E96A8" strokeWidth={1.8} strokeLinecap="round" />
+            </Svg>
             <Text style={styles.emptyTitle}>Something went wrong</Text>
             <Text style={styles.emptySub}>Could not load properties. Pull to retry.</Text>
             <TouchableOpacity style={styles.retryBtn} onPress={runSearch}>
@@ -227,7 +347,10 @@ export default function ExploreScreen() {
           </View>
         ) : results.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>🔍</Text>
+            <Svg width={44} height={44} viewBox="0 0 24 24" fill="none" style={{ marginBottom: 4 }}>
+              <Circle cx="11" cy="11" r="7" stroke="#9E96A8" strokeWidth={1.6} />
+              <Path d="M21 21l-4.35-4.35" stroke="#9E96A8" strokeWidth={1.8} strokeLinecap="round" />
+            </Svg>
             <Text style={styles.emptyTitle}>No properties found</Text>
             <Text style={styles.emptySub}>Try adjusting your filters or search term.</Text>
           </View>
@@ -250,7 +373,10 @@ export default function ExploreScreen() {
                 {item.images?.[0] ? (
                   <Image source={{ uri: optimizedImageUrl(item.images[0], 600) }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
                 ) : (
-                  <Text style={styles.resultEmoji}>🏨</Text>
+                  <Svg width={56} height={56} viewBox="0 0 24 24" fill="none">
+                    <Path d="M3 21h18M5 21V5a1 1 0 011-1h8a1 1 0 011 1v16M15 21V9h4a1 1 0 011 1v11" stroke="#C4B8DC" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                    <Path d="M8 8h1M11 8h1M8 12h1M11 12h1M8 16h1M11 16h1" stroke="#C4B8DC" strokeWidth={1.5} strokeLinecap="round" />
+                  </Svg>
                 )}
                 {item.verified && <VerifiedBadge />}
                 <TouchableOpacity style={styles.heartBtn} onPress={() => handleToggleSave(item.id)}>
@@ -258,7 +384,7 @@ export default function ExploreScreen() {
                     <Path
                       d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"
                       stroke="#FFFFFF"
-                      fill={savedIds.includes(item.id) ? '#C9A84C' : 'none'}
+                      fill={savedIds.includes(item.id) ? '#FFFFFF' : 'none'}
                       strokeWidth={1.8}
                     />
                   </Svg>
@@ -268,8 +394,8 @@ export default function ExploreScreen() {
                 <View style={styles.resultTop}>
                   <Text style={styles.resultName} numberOfLines={1}>{item.name}</Text>
                   <View style={styles.ratingRow}>
-                    <Text>⭐</Text>
-                    <Text style={styles.ratingText}>{item.rating?.toFixed(1) || '—'}</Text>
+                    <StarIcon size={13} color="#C9A84C" />
+                    <Text style={styles.ratingText}>{item.rating?.toFixed(1) || 'New'}</Text>
                   </View>
                 </View>
                 <Text style={styles.resultLocation}>{item.area}</Text>
@@ -347,7 +473,7 @@ const styles = StyleSheet.create({
   bookBtnText: { fontSize: 13, fontFamily: 'Poppins-SemiBold', color: '#FFFFFF', fontWeight: '600' },
   verifiedBadge: { position: 'absolute', bottom: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4 },
   verifiedIcon: { fontSize: 10 },
-  verifiedText: { fontSize: 9, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#C9A84C', letterSpacing: 0.5 },
+  verifiedText: { fontSize: 9, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#FFFFFF', letterSpacing: 0.5 },
   heartBtn: { position: 'absolute', top: 10, right: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' },
   empty: { alignItems: 'center', paddingTop: 40, gap: 8 },
   emptyIcon: { fontSize: 48 },

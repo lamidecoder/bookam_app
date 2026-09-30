@@ -218,10 +218,16 @@ export default function BookingDetailActiveScreen() {
           {propertyImage ? (
             <Image source={{ uri: propertyImage }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
           ) : (
-            <Text style={styles.imagePlaceholder}>🏨</Text>
+            <Svg width={60} height={60} viewBox="0 0 24 24" fill="none">
+              <Path d="M3 21h18M5 21V5a1 1 0 011-1h8a1 1 0 011 1v16M15 21V9h4a1 1 0 011 1v11" stroke="#C4B8DC" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              <Path d="M8 8h1M11 8h1M8 12h1M11 12h1M8 16h1M11 16h1" stroke="#C4B8DC" strokeWidth={1.5} strokeLinecap="round" />
+            </Svg>
           )}
           <View style={styles.verifiedBadge}>
-            <Text style={styles.verifiedIcon}>🏅</Text>
+            <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+              <Circle cx="12" cy="12" r="9" stroke="#6B2D82" strokeWidth={2} />
+              <Path d="M8 12l2.5 2.5L16 9" stroke="#6B2D82" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </Svg>
             <Text style={styles.verifiedText}>VERIFIED</Text>
           </View>
         </View>
@@ -407,7 +413,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 5,
   },
   verifiedIcon: { fontSize: 14 },
-  verifiedText: { fontSize: 11, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#C9A84C' },
+  verifiedText: { fontSize: 11, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#6B2D82', letterSpacing: 0.5 },
   content: { paddingHorizontal: 20, paddingTop: 20 },
   nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
   propertyName: { fontSize: 22, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#1E1E1E', flex: 1 },

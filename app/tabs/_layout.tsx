@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { usePushNotifications } from '../../hooks/usePushNotifications';
 
@@ -64,7 +65,25 @@ export default function TabsLayout() {
   const tabBarStyle = [styles.tabBar, { height: tabBarHeight, paddingBottom: Math.max(insets.bottom, 8) }];
 
   return (
-    <Tabs screenOptions={{ headerShown: false, tabBarStyle, tabBarShowLabel: false }}>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle,
+        tabBarShowLabel: false,
+        // Tabs switch instantly. The 'shift' animation looked nice but
+        // animated every tab screen's position on each switch, which felt
+        // laggy on real devices ("slow to show"). Instant switching is
+        // what fast apps do, and the haptic tick below still gives the
+        // press a premium, tactile feel.
+        animation: 'none',
+        tabBarHideOnKeyboard: true,
+      }}
+      screenListeners={{
+        // A light tactile tick every time a tab is pressed - the small
+        // premium detail people feel more than notice.
+        tabPress: () => { Haptics.selectionAsync().catch(() => {}); },
+      }}
+    >
       <Tabs.Screen name="home" options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon={<HomeIcon color={focused ? '#6B2D82' : '#9E96A8'} />} label="Home" /> }} />
       <Tabs.Screen name="explore" options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon={<SearchIcon color={focused ? '#6B2D82' : '#9E96A8'} />} label="Search" /> }} />
       <Tabs.Screen name="bookings" options={{ tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon={<BookingsIcon color={focused ? '#6B2D82' : '#9E96A8'} />} label="Bookings" /> }} />

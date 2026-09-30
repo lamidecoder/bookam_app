@@ -23,11 +23,20 @@
               "bookam",
               "exp+bookam"
             ]
+          },
+          {
+            "CFBundleURLName": "bookam",
+            "CFBundleURLSchemes": [
+              "bookam",
+              "exp+bookam"
+            ]
           }
         ],
         "UIBackgroundModes": [
+          "remote-notification",
           "remote-notification"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       },
       "usesAppleSignIn": true
     },

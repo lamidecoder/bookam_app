@@ -1,39 +1,214 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Switch,
+  TouchableOpacity, Switch, PanResponder,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { setPendingFilters } from '../../lib/searchFilters';
 
-const PROPERTY_TYPES = ['Hotels', 'Shortlets', 'Event Centers'];
+const PROPERTY_TYPES = ['All', 'Hotels', 'Shortlets', 'Event Centers'];
 const AREAS = ['Ikoyi', 'Victoria Island', 'Lekki Phase 1', 'Banana Island', 'Ikeja'];
+// ids are the REAL amenity strings stored on properties, so selecting one
+// here actually matches records in the search query.
 const AMENITIES = [
-  { id: 'wifi', label: 'WiFi', icon: '📶' },
-  { id: 'parking', label: 'Parking', icon: '🅿️' },
-  { id: 'pool', label: 'Pool', icon: '🏊' },
-  { id: 'gen', label: 'Generator', icon: '⚡' },
-  { id: 'ac', label: 'AC', icon: '❄️' },
-  { id: 'tv', label: 'TV', icon: '📺' },
-  { id: 'kitchen', label: 'Kitchen', icon: '🍳' },
-  { id: 'security', label: 'Security', icon: '🛡️' },
+  { id: 'WiFi', label: 'WiFi' },
+  { id: 'Parking', label: 'Parking' },
+  { id: 'Pool', label: 'Pool' },
+  { id: 'Generator', label: 'Generator' },
+  { id: 'AC', label: 'AC' },
+  { id: 'TV', label: 'TV' },
+  { id: 'Kitchen', label: 'Kitchen' },
+  { id: 'Security', label: 'Security' },
 ];
 const RATINGS = ['3+', '4+', '5'];
 
+const PRICE_MIN = 0;
+const PRICE_MAX = 2000000; // top thumb at the ceiling means "no upper cap"
+const PRICE_STEP = 50000;
+
+// Monochrome line icons - matches the Search tab.
+function AmenityIcon({ id, color }: { id: string; color: string }) {
+  const p = { stroke: color, strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' as const };
+  switch (id) {
+    case 'WiFi':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M5 12.5a10 10 0 0114 0" {...p} />
+          <Path d="M8.5 15.5a5 5 0 017 0" {...p} />
+          <Circle cx="12" cy="19" r="1.1" fill={color} />
+        </Svg>
+      );
+    case 'Parking':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M5.5 11l1.4-4.2A2 2 0 018.8 5.5h6.4a2 2 0 011.9 1.3L18.5 11" {...p} />
+          <Rect x="3.5" y="11" width="17" height="6" rx="1.6" {...p} />
+          <Circle cx="7.5" cy="17.5" r="1.4" {...p} />
+          <Circle cx="16.5" cy="17.5" r="1.4" {...p} />
+        </Svg>
+      );
+    case 'Pool':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M3 15.5c1.8 0 1.8-1.3 3.6-1.3s1.8 1.3 3.6 1.3 1.8-1.3 3.6-1.3 1.8 1.3 3.6 1.3" {...p} />
+          <Path d="M3 19.5c1.8 0 1.8-1.3 3.6-1.3s1.8 1.3 3.6 1.3 1.8-1.3 3.6-1.3 1.8 1.3 3.6 1.3" {...p} />
+          <Path d="M8 12V6.5a2 2 0 014 0M8 9h4" {...p} />
+        </Svg>
+      );
+    case 'Generator':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke={color} strokeWidth={1.7} strokeLinejoin="round" fill="none" />
+        </Svg>
+      );
+    case 'AC':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M12 2v20M4.5 6l15 12M19.5 6l-15 12" {...p} />
+          <Path d="M12 5l-2.2 2M12 5l2.2 2M12 19l-2.2-2M12 19l2.2-2" {...p} />
+        </Svg>
+      );
+    case 'TV':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Rect x="3" y="5" width="18" height="12" rx="2" {...p} />
+          <Path d="M8 21h8M12 17v4" {...p} />
+        </Svg>
+      );
+    case 'Kitchen':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M7 3v6a2 2 0 002 2M9 3v8m0 0v10M7 3v4" {...p} />
+          <Path d="M16.5 3c-1.4 0-2.2 2.2-2.2 4.5s.8 3.5 2.2 3.5v10" {...p} />
+        </Svg>
+      );
+    case 'Security':
+      return (
+        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+          <Path d="M12 3l7 3v5c0 4.4-3 7.5-7 9-4-1.5-7-4.6-7-9V6l7-3z" {...p} />
+          <Path d="M9 12l2 2 4-4.5" {...p} />
+        </Svg>
+      );
+    default:
+      return null;
+  }
+}
+
+function StarIcon({ size = 12, color = '#C9A84C' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.3 6.8 19l1-5.8L3.6 9.1l5.8-.8L12 3z" fill={color} />
+    </Svg>
+  );
+}
+
+// A real two-thumb, draggable price range slider (no extra native deps -
+// pure PanResponder). Reports changes up as [min, max].
+function PriceRangeSlider({ values, onChange }: { values: [number, number]; onChange: (v: [number, number]) => void }) {
+  const [trackWidth, setTrackWidth] = useState(0);
+  const trackWidthRef = useRef(0);
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
+  const startRef = useRef(0);
+
+  const clampStep = (v: number) =>
+    Math.max(PRICE_MIN, Math.min(PRICE_MAX, Math.round(v / PRICE_STEP) * PRICE_STEP));
+  const valueToX = (v: number) =>
+    trackWidth > 0 ? ((v - PRICE_MIN) / (PRICE_MAX - PRICE_MIN)) * trackWidth : 0;
+
+  const makeResponder = (which: 'min' | 'max') =>
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        startRef.current = which === 'min' ? valuesRef.current[0] : valuesRef.current[1];
+      },
+      onPanResponderMove: (_e, g) => {
+        const w = trackWidthRef.current;
+        if (w <= 0) return;
+        const delta = (g.dx / w) * (PRICE_MAX - PRICE_MIN);
+        let nv = clampStep(startRef.current + delta);
+        const [curMin, curMax] = valuesRef.current;
+        if (which === 'min') {
+          nv = Math.max(PRICE_MIN, Math.min(nv, curMax - PRICE_STEP));
+          onChange([nv, curMax]);
+        } else {
+          nv = Math.min(PRICE_MAX, Math.max(nv, curMin + PRICE_STEP));
+          onChange([curMin, nv]);
+        }
+      },
+    });
+
+  const minPan = useRef(makeResponder('min')).current;
+  const maxPan = useRef(makeResponder('max')).current;
+
+  const fmt = (v: number) => `₦${v.toLocaleString()}`;
+
+  return (
+    <View>
+      <View style={styles.priceHeader}>
+        <Text style={styles.sectionLabel}>Price Range</Text>
+        <Text style={styles.priceRange}>
+          {fmt(values[0])} - {values[1] >= PRICE_MAX ? `${fmt(PRICE_MAX)}+` : fmt(values[1])}
+        </Text>
+      </View>
+      <View
+        style={styles.sliderTrack}
+        onLayout={(e) => { const w = e.nativeEvent.layout.width; trackWidthRef.current = w; setTrackWidth(w); }}
+      >
+        <View style={[styles.sliderFill, { left: valueToX(values[0]), width: Math.max(0, valueToX(values[1]) - valueToX(values[0])) }]} />
+        <View {...minPan.panHandlers} hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }} style={[styles.sliderThumb, { left: valueToX(values[0]) - 12 }]} />
+        <View {...maxPan.panHandlers} hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }} style={[styles.sliderThumb, { left: valueToX(values[1]) - 12 }]} />
+      </View>
+      <View style={styles.priceLabels}>
+        <Text style={styles.priceLabel}>Min: {fmt(values[0])}</Text>
+        <Text style={styles.priceLabel}>Max: {values[1] >= PRICE_MAX ? `${fmt(PRICE_MAX)}+` : fmt(values[1])}</Text>
+      </View>
+    </View>
+  );
+}
+
 export default function FilterScreen() {
-  const [activeType, setActiveType] = useState('Hotels');
-  const [activeAreas, setActiveAreas] = useState(['Ikoyi', 'Victoria Island']);
-  const [activeAmenities, setActiveAmenities] = useState(['wifi', 'parking']);
-  const [activeRating, setActiveRating] = useState('4+');
-  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [activeType, setActiveType] = useState('All');
+  const [activeAreas, setActiveAreas] = useState<string[]>([]);
+  const [activeAmenities, setActiveAmenities] = useState<string[]>([]);
+  const [activeRating, setActiveRating] = useState('');
+  const [verifiedOnly, setVerifiedOnly] = useState(true); // checked by default
+  const [priceMin, setPriceMin] = useState(PRICE_MIN);
+  const [priceMax, setPriceMax] = useState(PRICE_MAX);
 
   const toggleArea = (a: string) =>
     setActiveAreas(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
 
   const toggleAmenity = (id: string) =>
     setActiveAmenities(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  const resetAll = () => {
+    setActiveType('All');
+    setActiveAreas([]);
+    setActiveAmenities([]);
+    setActiveRating('');
+    setVerifiedOnly(true);
+    setPriceMin(PRICE_MIN);
+    setPriceMax(PRICE_MAX);
+  };
+
+  const applyFilters = () => {
+    setPendingFilters({
+      type: activeType === 'All' ? undefined : activeType.slice(0, -1),
+      areas: activeAreas,
+      amenities: activeAmenities,
+      minPrice: priceMin,
+      maxPrice: priceMax >= PRICE_MAX ? 0 : priceMax, // 0 = no upper cap
+      minRating: activeRating ? parseInt(activeRating) : 0,
+      verifiedOnly,
+    });
+    router.back();
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -45,13 +220,7 @@ export default function FilterScreen() {
           <Text style={styles.closeBtn}>✕</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Refine Search</Text>
-        <TouchableOpacity onPress={() => {
-          setActiveType('Hotels');
-          setActiveAreas([]);
-          setActiveAmenities([]);
-          setActiveRating('');
-          setVerifiedOnly(false);
-        }}>
+        <TouchableOpacity onPress={resetAll}>
           <Text style={styles.resetBtn}>Reset</Text>
         </TouchableOpacity>
       </View>
@@ -74,20 +243,11 @@ export default function FilterScreen() {
           ))}
         </View>
 
-        {/* Price Range */}
-        <View style={styles.priceHeader}>
-          <Text style={styles.sectionLabel}>Price Range</Text>
-          <Text style={styles.priceRange}>₦20,000 - ₦250,000+</Text>
-        </View>
-        <View style={styles.sliderTrack}>
-          <View style={styles.sliderFill} />
-          <View style={[styles.sliderThumb, { left: '10%' }]} />
-          <View style={[styles.sliderThumb, { left: '70%' }]} />
-        </View>
-        <View style={styles.priceLabels}>
-          <Text style={styles.priceLabel}>Min: ₦20,000</Text>
-          <Text style={styles.priceLabel}>Max: ₦500,000+</Text>
-        </View>
+        {/* Price Range (draggable) */}
+        <PriceRangeSlider
+          values={[priceMin, priceMax]}
+          onChange={([lo, hi]) => { setPriceMin(lo); setPriceMax(hi); }}
+        />
 
         {/* Popular Areas */}
         <Text style={styles.sectionLabel}>Popular Areas</Text>
@@ -114,7 +274,7 @@ export default function FilterScreen() {
               style={[styles.amenityItem, activeAmenities.includes(a.id) && styles.amenityItemActive]}
               onPress={() => toggleAmenity(a.id)}
             >
-              <Text style={styles.amenityIcon}>{a.icon}</Text>
+              <AmenityIcon id={a.id} color={activeAmenities.includes(a.id) ? '#FFFFFF' : '#6B6478'} />
               <Text style={[styles.amenityLabel, activeAmenities.includes(a.id) && styles.amenityLabelActive]}>
                 {a.label}
               </Text>
@@ -129,12 +289,14 @@ export default function FilterScreen() {
             <TouchableOpacity
               key={r}
               style={[styles.ratingBox, activeRating === r && styles.ratingBoxActive]}
-              onPress={() => setActiveRating(r)}
+              onPress={() => setActiveRating(activeRating === r ? '' : r)}
             >
               <Text style={[styles.ratingText, activeRating === r && styles.ratingTextActive]}>{r}</Text>
-              <Text style={styles.ratingStars}>
-                {'⭐'.repeat(parseInt(r))}
-              </Text>
+              <View style={styles.ratingStarsRow}>
+                {Array.from({ length: parseInt(r) }).map((_, i) => (
+                  <StarIcon key={i} size={11} color={activeRating === r ? '#C9A84C' : '#DED0B4'} />
+                ))}
+              </View>
             </TouchableOpacity>
           ))}
         </View>
@@ -143,7 +305,10 @@ export default function FilterScreen() {
         <View style={styles.verifiedCard}>
           <View style={styles.verifiedLeft}>
             <View style={styles.verifiedIconWrap}>
-              <Text style={styles.verifiedIcon}>🏅</Text>
+              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                <Circle cx="12" cy="12" r="9" stroke="#FFFFFF" strokeWidth={2} />
+                <Path d="M8 12l2.5 2.5L16 9" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              </Svg>
             </View>
             <View style={styles.verifiedText}>
               <Text style={styles.verifiedTitle}>Verified Only</Text>
@@ -159,7 +324,7 @@ export default function FilterScreen() {
         </View>
 
         <View style={{ height: 20 }} />
-        <PrimaryButton label="Show 12 Properties" onPress={() => router.back()} />
+        <PrimaryButton label="Show Properties" onPress={applyFilters} />
         <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
@@ -189,15 +354,15 @@ const styles = StyleSheet.create({
   // Price
   priceHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   priceRange: { fontSize: 13, fontFamily: 'Poppins-SemiBold', color: '#6B2D82', fontWeight: '600' },
-  sliderTrack: { height: 4, backgroundColor: '#E0D9ED', borderRadius: 2, marginBottom: 8, position: 'relative' },
-  sliderFill: { position: 'absolute', left: '10%', right: '30%', top: 0, bottom: 0, backgroundColor: '#6B2D82', borderRadius: 2 },
+  sliderTrack: { height: 4, backgroundColor: '#E0D9ED', borderRadius: 2, marginBottom: 8, marginTop: 8, position: 'relative', justifyContent: 'center' },
+  sliderFill: { position: 'absolute', top: 0, bottom: 0, backgroundColor: '#6B2D82', borderRadius: 2 },
   sliderThumb: {
-    position: 'absolute', top: -8,
-    width: 20, height: 20, borderRadius: 10,
+    position: 'absolute', top: -10,
+    width: 24, height: 24, borderRadius: 12,
     backgroundColor: '#6B2D82', borderWidth: 3, borderColor: '#FFFFFF',
     shadowColor: '#6B2D82', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4,
   },
-  priceLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
+  priceLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, marginTop: 6 },
   priceLabel: { fontSize: 12, fontFamily: 'Poppins-Regular', color: '#9E96A8' },
 
   // Areas
@@ -214,7 +379,6 @@ const styles = StyleSheet.create({
     borderRadius: 12, alignItems: 'center', justifyContent: 'center', gap: 4,
   },
   amenityItemActive: { backgroundColor: '#6B2D82' },
-  amenityIcon: { fontSize: 22 },
   amenityLabel: { fontSize: 10, fontFamily: 'Poppins-Regular', color: '#6B6478', textAlign: 'center' },
   amenityLabelActive: { color: '#FFFFFF' },
 
@@ -228,7 +392,7 @@ const styles = StyleSheet.create({
   ratingBoxActive: { borderColor: '#6B2D82', backgroundColor: '#FFFFFF' },
   ratingText: { fontSize: 16, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#9E96A8' },
   ratingTextActive: { color: '#6B2D82' },
-  ratingStars: { fontSize: 12 },
+  ratingStarsRow: { flexDirection: 'row', gap: 1 },
 
   // Verified
   verifiedCard: {
@@ -238,9 +402,8 @@ const styles = StyleSheet.create({
   verifiedLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, flex: 1 },
   verifiedIconWrap: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#C9A84C', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#6B2D82', alignItems: 'center', justifyContent: 'center',
   },
-  verifiedIcon: { fontSize: 22 },
   verifiedText: { flex: 1, gap: 2 },
   verifiedTitle: { fontSize: 14, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#6B2D82' },
   verifiedSub: { fontSize: 12, fontFamily: 'Poppins-Regular', color: '#6B6478', lineHeight: 18 },

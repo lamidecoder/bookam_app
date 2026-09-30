@@ -8,7 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { BookamLogo } from '../../components/ui/BookamLogo';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { CharacterAvatar } from '../../components/ui/CharacterAvatar';
@@ -32,10 +32,22 @@ function shuffleArray<T>(arr: T[]): T[] {
   return copy;
 }
 
+// Small solid star for the rating pill - black, matches the Search tab.
+function StarIcon({ size = 13, color = '#1E1E1E' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.3 6.8 19l1-5.8L3.6 9.1l5.8-.8L12 3z" fill={color} />
+    </Svg>
+  );
+}
+
 function VerifiedBadge() {
   return (
     <View style={styles.verifiedBadge}>
-      <Text style={styles.verifiedIcon}>🏅</Text>
+      <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+        <Circle cx="12" cy="12" r="9" stroke="#FFFFFF" strokeWidth={2} />
+        <Path d="M8 12l2.5 2.5L16 9" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </Svg>
       <Text style={styles.verifiedText}>VERIFIED</Text>
     </View>
   );
@@ -44,7 +56,12 @@ function VerifiedBadge() {
 function PropertyImage({ uri }: { uri?: string }) {
   const optimized = optimizedImageUrl(uri, 600);
   if (!optimized) {
-    return <Text style={styles.propertyEmoji}>🏨</Text>;
+    return (
+      <Svg width={56} height={56} viewBox="0 0 24 24" fill="none">
+        <Path d="M3 21h18M5 21V5a1 1 0 011-1h8a1 1 0 011 1v16M15 21V9h4a1 1 0 011 1v11" stroke="#C4B8DC" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M8 8h1M11 8h1M8 12h1M11 12h1M8 16h1M11 16h1" stroke="#C4B8DC" strokeWidth={1.5} strokeLinecap="round" />
+      </Svg>
+    );
   }
   return (
     <Image
@@ -70,7 +87,7 @@ function PropertyCard({ item, onPress, isSaved, onToggleSave }: {
             <Path
               d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"
               stroke="#FFFFFF"
-              fill={isSaved ? '#C9A84C' : 'none'}
+              fill={isSaved ? '#FFFFFF' : 'none'}
               strokeWidth={1.8}
             />
           </Svg>
@@ -80,7 +97,7 @@ function PropertyCard({ item, onPress, isSaved, onToggleSave }: {
         <View style={styles.propertyTop}>
           <Text style={styles.propertyName} numberOfLines={1}>{item.name}</Text>
           <View style={styles.ratingRow}>
-            <Text style={styles.ratingStar}>⭐</Text>
+            <StarIcon size={13} color="#C9A84C" />
             <Text style={styles.ratingText}>{item.rating?.toFixed(1)}</Text>
           </View>
         </View>
@@ -363,14 +380,18 @@ export default function HomeScreen() {
               ))}
               {allProperties.length === 0 && featured.length === 0 && (
                 <View style={styles.empty}>
-                  <Text style={styles.emptyIcon}>🏠</Text>
+                  <Svg width={40} height={40} viewBox="0 0 24 24" fill="none" style={{ marginBottom: 6 }}>
+                    <Path d="M3 21h18M5 21V5a1 1 0 011-1h8a1 1 0 011 1v16M15 21V9h4a1 1 0 011 1v11" stroke="#C4B8DC" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                  </Svg>
                   <Text style={styles.emptyText}>No properties found</Text>
                 </View>
               )}
               {allProperties.length === 0 && featured.length > 0 && (
                 <View style={styles.empty}>
-                  <Text style={styles.emptyIcon}>✨</Text>
-                  <Text style={styles.emptyText}>You've seen everything — check Featured above</Text>
+                  <Svg width={40} height={40} viewBox="0 0 24 24" fill="none" style={{ marginBottom: 6 }}>
+                    <Path d="M12 3l2.1 6.5H21l-5.4 4 2.1 6.5L12 16l-5.7 4 2.1-6.5-5.4-4h6.9L12 3z" stroke="#C4B8DC" strokeWidth={1.5} strokeLinejoin="round" fill="none" />
+                  </Svg>
+                  <Text style={styles.emptyText}>You've seen everything. Check Featured above.</Text>
                 </View>
               )}
             </View>
@@ -430,7 +451,7 @@ const styles = StyleSheet.create({
   bookBtnText: { fontSize: 13, fontFamily: 'Poppins-SemiBold', color: '#FFFFFF', fontWeight: '600' },
   verifiedBadge: { position: 'absolute', bottom: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 4 },
   verifiedIcon: { fontSize: 10 },
-  verifiedText: { fontSize: 9, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#C9A84C', letterSpacing: 0.5 },
+  verifiedText: { fontSize: 9, fontWeight: '700', fontFamily: 'Poppins-Bold', color: '#FFFFFF', letterSpacing: 0.5 },
   heartBtn: { position: 'absolute', top: 10, right: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' },
   loader: { paddingVertical: 60, alignItems: 'center' },
   empty: { alignItems: 'center', paddingVertical: 40, gap: 8 },

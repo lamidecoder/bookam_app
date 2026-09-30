@@ -45,7 +45,14 @@ export default function ProfileScreen() {
   const displayEmail = profile?.email || user?.email || '';
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+      // Global toast (ToastProvider lives at the root), so it still shows
+      // after the SIGNED_OUT handler navigates the guest back to Home.
+      toast.success('Logged out', "You've been logged out.");
+    } catch {
+      toast.error('Something went wrong', 'Could not log you out. Please try again.');
+    }
   };
 
   // Shows a clear reason before sending a guest to sign in, and

@@ -46,6 +46,8 @@ export async function searchProperties(filters: {
   guests?: number;
   minPrice?: number;
   maxPrice?: number;
+  minRating?: number;
+  verifiedOnly?: boolean;
 }) {
   let q = supabase.from('properties').select('*').eq('active', true);
 
@@ -54,8 +56,17 @@ export async function searchProperties(filters: {
   if (filters.amenities?.length) q = q.contains('amenities', filters.amenities);
   if (filters.minPrice) q = q.gte('price_per_night', filters.minPrice);
   if (filters.maxPrice) q = q.lte('price_per_night', filters.maxPrice);
-  if (filters.query?.trim()) {
-    q = q.or(`name.ilike.%${filters.query}%,area.ilike.%${filters.query}%,location.ilike.%${filters.query}%`);
+  if (filters.minRating) q = q.gte('rating', filters.minRating);
+  if (filters.verifiedOnly) q = q.eq('verified', true);
+  // Sanitize the search term before building the PostgREST `.or()` filter.
+  // Commas, parentheses and % are structural characters in that filter
+  // syntax, so a name typed with any of them (or a stray one) silently
+  // broke the whole query and returned nothing. Strip them, collapse
+  // whitespace, and only search when something real remains.
+  const rawQuery = filters.query?.trim() ?? '';
+  const safeQuery = rawQuery.replace(/[,()%*]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (safeQuery) {
+    q = q.or(`name.ilike.%${safeQuery}%,area.ilike.%${safeQuery}%,location.ilike.%${safeQuery}%`);
   }
 
   q = q.order('rating', { ascending: false });
@@ -68,7 +79,7 @@ export async function searchProperties(filters: {
   // query with genuinely sparse results (<3) - not on every search,
   // and not when other filters (type/amenities/price) already narrowed
   // things down on purpose.
-  const queryText = filters.query?.trim();
+  const queryText = safeQuery;
   if (queryText && exactResults.length < 3 && !filters.areas?.length) {
     const nearby = findNearbyAreas(queryText);
     if (nearby.length > 0) {

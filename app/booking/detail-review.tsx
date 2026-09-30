@@ -162,7 +162,10 @@ export default function BookingDetailReviewScreen() {
           {propertyImage ? (
             <Image source={{ uri: propertyImage }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
           ) : (
-            <Text style={styles.imagePlaceholder}>🏨</Text>
+            <Svg width={60} height={60} viewBox="0 0 24 24" fill="none">
+              <Path d="M3 21h18M5 21V5a1 1 0 011-1h8a1 1 0 011 1v16M15 21V9h4a1 1 0 011 1v11" stroke="#C4B8DC" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              <Path d="M8 8h1M11 8h1M8 12h1M11 12h1M8 16h1M11 16h1" stroke="#C4B8DC" strokeWidth={1.5} strokeLinecap="round" />
+            </Svg>
           )}
           <View style={styles.completedBadge}>
             <View style={styles.completedDot} />
